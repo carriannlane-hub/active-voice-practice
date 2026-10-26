@@ -350,7 +350,11 @@ export default function App() {
 
   const checkSelection = () => {
     const targets = stage === 'spot' ? signalIdx : actionIdx;
-    const result = gradeSelection(selected, targets, tokens, stage === 'spot' ? 'signal' : 'action');
+    const result = gradeSelection(selected, targets, tokens, stage === 'spot' ? 'signal' : 'action', {
+      doer: sentence.doer,
+      signalIdx,
+      decoys: sentence.decoys
+    });
     if (result.kind === 'correct') {
       setStageDone(true);
       setStageFeedback({ kind: 'right', text: stage === 'spot' ? 'You found the signal.' : 'You found the action.' });
@@ -549,7 +553,7 @@ export default function App() {
                   <p className="font-semibold">{s.label}</p>
                   <p className={`text-sm ${t.soft}`}>
                     {i === 0 && 'Tap the words that give passive voice away.'}
-                    {i === 1 && 'Tap the word that holds the real action.'}
+                    {i === 1 && 'Tap the word that names what the doer did.'}
                     {i === 2 && 'Rewrite it with the doer up front.'}
                   </p>
                 </li>
@@ -748,7 +752,7 @@ export default function App() {
               <p className={`${t.soft} mb-4 leading-relaxed`}>
                 {stage === 'spot'
                   ? 'Tap the words that signal passive voice: a form of "to be," the verb after it, and "by."'
-                  : sentence.actionPrompt + (sentence.hiddenNoun ? ' It may be hiding inside a noun.' : '')}
+                  : sentence.actionPrompt}
               </p>
 
               {!stageDone && (

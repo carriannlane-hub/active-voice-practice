@@ -65,8 +65,9 @@ const PRONOUN_DOERS = ['we', 'i', 'they', 'you', 'he', 'she', 'staff', 'our team
  * @param {number[]} targets   token indices that are correct
  * @param {object[]} tokens    tokens of the sentence (for naming words in notes)
  * @param {'signal'|'action'} kind
+ * @param {object} [ctx]       { doer, signalIdx, decoys } for action-step notes
  */
-export const gradeSelection = (selected, targets, tokens, kind) => {
+export const gradeSelection = (selected, targets, tokens, kind, ctx = {}) => {
   const sel = new Set(selected);
   const tgt = new Set(targets);
   const hits = selected.filter((i) => tgt.has(i));
@@ -77,10 +78,31 @@ export const gradeSelection = (selected, targets, tokens, kind) => {
 
   const name = (i) => `"${tokens[i].text.replace(/[.,!?;:]/g, '')}"`;
 
+  /* A specific note for a wrong tap in the action step. */
+  const explainExtra = (i) => {
+    const word = tokens[i].clean;
+    if (ctx.decoys && ctx.decoys[word]) return ctx.decoys[word];
+    if (ctx.signalIdx && ctx.signalIdx.includes(i)) {
+      return `${name(i)} is part of the passive signal, not the action itself. What did ${ctx.doer || 'the doer'} do?`;
+    }
+    return `Not ${name(i)}. What did ${ctx.doer || 'the doer'} do? Tap the word that names it, even if it is dressed up as a noun.`;
+  };
+
+  /* When several wrong words were tapped, explain the most instructive one:
+     a helper verb from the passive signal first, then any other known decoy. */
+  const rank = (i) => {
+    const inSignal = ctx.signalIdx && ctx.signalIdx.includes(i);
+    const hasDecoy = ctx.decoys && ctx.decoys[tokens[i].clean];
+    return (inSignal && hasDecoy ? 0 : hasDecoy ? 1 : inSignal ? 2 : 3);
+  };
+  const worst = [...extras].sort((a, b) => rank(a) - rank(b))[0];
+
   if (extras.length > 0 && hits.length > 0) {
     return {
       kind: 'partial',
-      text: `${name(hits[0])} is right. ${extras.map(name).join(' and ')} ${extras.length > 1 ? 'are' : 'is'} not part of it. Try again.`
+      text: kind === 'action'
+        ? `${name(hits[0])} is right. ${explainExtra(worst)}`
+        : `${name(hits[0])} is right. ${extras.map(name).join(' and ')} ${extras.length > 1 ? 'are' : 'is'} not part of it. Try again.`
     };
   }
   if (extras.length > 0) {
@@ -88,7 +110,7 @@ export const gradeSelection = (selected, targets, tokens, kind) => {
       kind: 'wrong',
       text: kind === 'signal'
         ? `Not that one. Look for a form of "to be" (was, were, is), the verb right after it, and the word "by."`
-        : `Not that one. Ask what is actually being done in this sentence, then find the word that names it.`
+        : (extras.length > 1 ? 'Neither of those. ' : '') + explainExtra(worst)
     };
   }
   return {

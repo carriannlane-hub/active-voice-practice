@@ -364,8 +364,10 @@ export default function App() {
       focusLater(nextRef);
     } else {
       setStageMisses((m) => ({ ...m, [stage]: m[stage] + 1 }));
-      setStageFeedback({ kind: 'miss', text: result.text });
-      setAnnounce(result.text);
+      setStageFeedback({ kind: 'miss', partial: result.kind === 'partial', text: result.text });
+      setAnnounce(`${result.kind === 'partial' ? 'Close.' : 'Not there yet.'} ${result.text}`);
+      /* Drop the wrong taps so the next try starts clean. Right taps stay marked. */
+      setSelected(selected.filter((i) => targets.includes(i)));
     }
   };
 
@@ -764,7 +766,7 @@ export default function App() {
               )}
 
               {stageFeedback && stageFeedback.kind === 'miss' && (
-                <Panel t={t} kind="miss" title="Not quite." live>
+                <Panel t={t} kind="miss" title={stageFeedback.partial ? 'Close.' : 'Not there yet.'} live>
                   {stageFeedback.text}
                 </Panel>
               )}

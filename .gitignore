@@ -6,3 +6,6 @@ dist
 .vercel
 eval/results.json
 eval/report*.txt
+
+.vercel
+.env*

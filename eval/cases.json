@@ -1,45 +1,424 @@
 [
-  {"id":"b01","sentence":"brief","text":"The review panel recommended approving the new contract.","expect":{"pass":true,"stronger":null}},
-  {"id":"b02","sentence":"brief","text":"The review panel recommended that the new contract be approved.","expect":{"pass":true,"stronger":null},"note":"passive inside a that-clause is fine"},
-  {"id":"b03","sentence":"brief","text":"The review panel made a recommendation to approve the new contract.","expect":{"pass":true,"stronger":"recommended"}},
-  {"id":"b04","sentence":"brief","text":"A recommendation to approve the new contract was made by the panel.","expect":{"pass":false,"issue":["passive"]}},
-  {"id":"b05","sentence":"brief","text":"The new contract was recommended for approval by the review panel.","expect":{"pass":false,"issue":["passive"]}},
-  {"id":"b06","sentence":"brief","text":"Recommended approving the new contract.","expect":{"pass":false,"issue":["no_doer","fragment"]}},
-  {"id":"b07","sentence":"brief","text":"The review panel.","expect":{"pass":false,"issue":["fragment"]}},
-  {"id":"b08","sentence":"brief","text":"The review panel approved the new contract.","expect":{"pass":false,"issue":["meaning_changed"]},"note":"active, but the panel recommended, it did not approve"},
-  {"id":"b09","sentence":"brief","text":"The reviw panel recomended approving the new contract.","expect":{"pass":true,"stronger":null},"note":"typos"},
-  {"id":"b10","sentence":"brief","text":"Approving the new contract is what the review panel recommended.","expect":{"pass":true,"stronger":null},"strict":false,"note":"active but the doer comes late"},
-
-  {"id":"j01","sentence":"justification","text":"The finance team justified the additional funding.","expect":{"pass":true,"stronger":null}},
-  {"id":"j02","sentence":"justification","text":"The finance team provided a justification for the additional funding.","expect":{"pass":true,"stronger":"justified"}},
-  {"id":"j03","sentence":"justification","text":"The finance team explained why the additional funding was needed.","expect":{"pass":true,"stronger":null},"note":"passive only inside a why-clause"},
-  {"id":"j04","sentence":"justification","text":"Finance justified the additional funding.","expect":{"pass":true,"stronger":null}},
-  {"id":"j05","sentence":"justification","text":"The additional funding was justified by the finance team.","expect":{"pass":false,"issue":["passive"]}},
-  {"id":"j06","sentence":"justification","text":"A justification was provided by the finance team for the additional funding.","expect":{"pass":false,"issue":["passive"]}},
-  {"id":"j07","sentence":"justification","text":"The finance team's justification for the additional funding.","expect":{"pass":false,"issue":["fragment"]}},
-  {"id":"j08","sentence":"justification","text":"The additional funding has been justified.","expect":{"pass":false,"issue":["passive","no_doer"]}},
-  {"id":"j09","sentence":"justification","text":"The finance team requested additional funding.","expect":{"pass":false,"issue":["meaning_changed"]}},
-  {"id":"j10","sentence":"justification","text":"The finance team gave a justification for the additional funding.","expect":{"pass":true,"stronger":"justified"}},
-
-  {"id":"r01","sentence":"report","text":"The project team assessed the risks and documented them in the report.","expect":{"pass":true,"stronger":null}},
-  {"id":"r02","sentence":"report","text":"The project team assessed and documented the risks in the report.","expect":{"pass":true,"stronger":null}},
-  {"id":"r03","sentence":"report","text":"The project team assessed the risks, and the risks were documented in the report.","expect":{"pass":false,"issue":["passive"]},"note":"first clause active, second passive"},
-  {"id":"r04","sentence":"report","text":"The risks were assessed and documented by the project team.","expect":{"pass":false,"issue":["passive"]}},
-  {"id":"r05","sentence":"report","text":"The project team assessed the risks.","expect":{"pass":false,"issue":["meaning_changed"]},"strict":false,"note":"drops the second action; debatable"},
-  {"id":"r06","sentence":"report","text":"The project team identified the risks and recorded them in the report.","expect":{"pass":true,"stronger":null},"note":"synonyms"},
-  {"id":"r07","sentence":"report","text":"Risks were assessed by the project team, who documented them in the report.","expect":{"pass":false,"issue":["passive"]}},
-  {"id":"r08","sentence":"report","text":"The project team was assessing the risks and documenting them in the report.","expect":{"pass":true,"stronger":null},"note":"progressive, not passive"},
-  {"id":"r09","sentence":"report","text":"The report documents the risks the project team assessed.","expect":{"pass":true,"stronger":null},"strict":false,"note":"active, unusual doer; debatable"},
-  {"id":"r10","sentence":"report","text":"Assessed the risks and documented them in the report.","expect":{"pass":false,"issue":["no_doer","fragment"]}},
-
-  {"id":"c01","sentence":"compliance","text":"The inspector reviewed the safety requirements.","expect":{"pass":true,"stronger":null}},
-  {"id":"c02","sentence":"compliance","text":"The inspector completed a review of the safety requirements.","expect":{"pass":true,"stronger":"reviewed"}},
-  {"id":"c03","sentence":"compliance","text":"The inspector inspected the safety requirements.","expect":{"pass":true,"stronger":null}},
-  {"id":"c04","sentence":"compliance","text":"The inspector was reviewing the safety requirements.","expect":{"pass":true,"stronger":null},"note":"progressive, not passive"},
-  {"id":"c05","sentence":"compliance","text":"The safety requirements were reviewed by the inspector.","expect":{"pass":false,"issue":["passive"]}},
-  {"id":"c06","sentence":"compliance","text":"A review of the safety requirements was completed.","expect":{"pass":false,"issue":["passive","no_doer"]}},
-  {"id":"c07","sentence":"compliance","text":"The inspector finished the safety requirements.","expect":{"pass":false,"issue":["meaning_changed"]}},
-  {"id":"c08","sentence":"compliance","text":"The inspector is required to review the safety requirements.","expect":{"pass":false,"issue":["passive","meaning_changed"]}},
-  {"id":"c09","sentence":"compliance","text":"The inspector reviewed.","expect":{"pass":false,"issue":["fragment","meaning_changed"]}},
-  {"id":"c10","sentence":"compliance","text":"The inspector completed the safety requirements review.","expect":{"pass":true,"stronger":"reviewed"}}
+  {
+    "id": "b01",
+    "sentence": "brief",
+    "text": "The review panel recommended approving the new contract.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    }
+  },
+  {
+    "id": "b02",
+    "sentence": "brief",
+    "text": "The review panel recommended that the new contract be approved.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    },
+    "note": "passive inside a that-clause is fine"
+  },
+  {
+    "id": "b03",
+    "sentence": "brief",
+    "text": "The review panel made a recommendation to approve the new contract.",
+    "expect": {
+      "pass": true,
+      "stronger": "recommended"
+    }
+  },
+  {
+    "id": "b04",
+    "sentence": "brief",
+    "text": "A recommendation to approve the new contract was made by the panel.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "passive"
+      ]
+    }
+  },
+  {
+    "id": "b05",
+    "sentence": "brief",
+    "text": "The new contract was recommended for approval by the review panel.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "passive"
+      ]
+    }
+  },
+  {
+    "id": "b06",
+    "sentence": "brief",
+    "text": "Recommended approving the new contract.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "no_doer",
+        "fragment"
+      ]
+    }
+  },
+  {
+    "id": "b07",
+    "sentence": "brief",
+    "text": "The review panel.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "fragment"
+      ]
+    }
+  },
+  {
+    "id": "b08",
+    "sentence": "brief",
+    "text": "The review panel approved the new contract.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "meaning_changed"
+      ]
+    },
+    "note": "active, but the panel recommended, it did not approve"
+  },
+  {
+    "id": "b09",
+    "sentence": "brief",
+    "text": "The reviw panel recomended approving the new contract.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    },
+    "note": "typos"
+  },
+  {
+    "id": "b10",
+    "sentence": "brief",
+    "text": "Approving the new contract is what the review panel recommended.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    },
+    "strict": false,
+    "note": "active but the doer comes late"
+  },
+  {
+    "id": "e01",
+    "sentence": "explanation",
+    "text": "The contractor explained the delay.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    }
+  },
+  {
+    "id": "e02",
+    "sentence": "explanation",
+    "text": "The contractor provided an explanation of the delay.",
+    "expect": {
+      "pass": true,
+      "stronger": "explained"
+    }
+  },
+  {
+    "id": "e03",
+    "sentence": "explanation",
+    "text": "The contractor explained why the shipment was late.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    },
+    "note": "passive only inside a why-clause"
+  },
+  {
+    "id": "e04",
+    "sentence": "explanation",
+    "text": "The vendor told us why the work was delayed.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    },
+    "note": "synonym doer and verb"
+  },
+  {
+    "id": "e05",
+    "sentence": "explanation",
+    "text": "The delay was explained by the contractor.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "passive"
+      ]
+    }
+  },
+  {
+    "id": "e06",
+    "sentence": "explanation",
+    "text": "An explanation was provided by the contractor for the delay.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "passive"
+      ]
+    }
+  },
+  {
+    "id": "e07",
+    "sentence": "explanation",
+    "text": "The contractor's explanation of the delay.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "fragment"
+      ]
+    }
+  },
+  {
+    "id": "e08",
+    "sentence": "explanation",
+    "text": "The delay has been explained.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "passive",
+        "no_doer"
+      ]
+    }
+  },
+  {
+    "id": "e09",
+    "sentence": "explanation",
+    "text": "The contractor caused the delay.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "meaning_changed"
+      ]
+    },
+    "note": "active, but causing is not explaining"
+  },
+  {
+    "id": "e10",
+    "sentence": "explanation",
+    "text": "The contractor gave an explanation for the delay.",
+    "expect": {
+      "pass": true,
+      "stronger": "explained"
+    }
+  },
+  {
+    "id": "r01",
+    "sentence": "report",
+    "text": "The project team assessed the risks and documented them in the report.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    }
+  },
+  {
+    "id": "r02",
+    "sentence": "report",
+    "text": "The project team assessed and documented the risks in the report.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    }
+  },
+  {
+    "id": "r03",
+    "sentence": "report",
+    "text": "The project team assessed the risks, and the risks were documented in the report.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "passive"
+      ]
+    },
+    "note": "first clause active, second passive"
+  },
+  {
+    "id": "r04",
+    "sentence": "report",
+    "text": "The risks were assessed and documented by the project team.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "passive"
+      ]
+    }
+  },
+  {
+    "id": "r05",
+    "sentence": "report",
+    "text": "The project team assessed the risks.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "meaning_changed"
+      ]
+    },
+    "strict": false,
+    "note": "drops the second action; debatable"
+  },
+  {
+    "id": "r06",
+    "sentence": "report",
+    "text": "The project team identified the risks and recorded them in the report.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    },
+    "note": "synonyms"
+  },
+  {
+    "id": "r07",
+    "sentence": "report",
+    "text": "Risks were assessed by the project team, who documented them in the report.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "passive"
+      ]
+    }
+  },
+  {
+    "id": "r08",
+    "sentence": "report",
+    "text": "The project team was assessing the risks and documenting them in the report.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    },
+    "note": "progressive, not passive"
+  },
+  {
+    "id": "r09",
+    "sentence": "report",
+    "text": "The report documents the risks the project team assessed.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    },
+    "strict": false,
+    "note": "active, unusual doer; debatable"
+  },
+  {
+    "id": "r10",
+    "sentence": "report",
+    "text": "Assessed the risks and documented them in the report.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "no_doer",
+        "fragment"
+      ]
+    }
+  },
+  {
+    "id": "c01",
+    "sentence": "compliance",
+    "text": "The inspector reviewed the safety requirements.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    }
+  },
+  {
+    "id": "c02",
+    "sentence": "compliance",
+    "text": "The inspector completed a review of the safety requirements.",
+    "expect": {
+      "pass": true,
+      "stronger": "reviewed"
+    }
+  },
+  {
+    "id": "c03",
+    "sentence": "compliance",
+    "text": "The inspector inspected the safety requirements.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    }
+  },
+  {
+    "id": "c04",
+    "sentence": "compliance",
+    "text": "The inspector was reviewing the safety requirements.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    },
+    "note": "progressive, not passive"
+  },
+  {
+    "id": "c05",
+    "sentence": "compliance",
+    "text": "The safety requirements were reviewed by the inspector.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "passive"
+      ]
+    }
+  },
+  {
+    "id": "c06",
+    "sentence": "compliance",
+    "text": "A review of the safety requirements was completed.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "passive",
+        "no_doer"
+      ]
+    }
+  },
+  {
+    "id": "c07",
+    "sentence": "compliance",
+    "text": "The inspector finished the safety requirements.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "meaning_changed"
+      ]
+    }
+  },
+  {
+    "id": "c08",
+    "sentence": "compliance",
+    "text": "The inspector is required to review the safety requirements.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "passive",
+        "meaning_changed"
+      ]
+    }
+  },
+  {
+    "id": "c09",
+    "sentence": "compliance",
+    "text": "The inspector reviewed.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "fragment",
+        "meaning_changed"
+      ]
+    }
+  },
+  {
+    "id": "c10",
+    "sentence": "compliance",
+    "text": "The inspector completed the safety requirements review.",
+    "expect": {
+      "pass": true,
+      "stronger": "reviewed"
+    }
+  }
 ]

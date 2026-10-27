@@ -57,38 +57,38 @@ export const SENTENCES = [
     }
   },
   {
-    id: 'justification',
-    docType: 'Justification',
-    original: 'A justification for the additional funding was provided by the finance team.',
+    id: 'explanation',
+    docType: 'Status update',
+    original: 'An explanation of the delay was provided by the contractor.',
     signal: ['was', 'provided', 'by'],
     signalLabel: 'was provided by',
-    passiveNote: 'It buries who stands behind the request, so the reader cannot tell whom to follow up with.',
-    action: ['justification'],
-    actionPrompt: 'The real action is hiding inside a noun. Which word holds it? Ask: what did the finance team do?',
-    actionLabel: 'justify',
+    passiveNote: 'It buries who explained the delay, so the reader has no one to ask about the next one.',
+    action: ['explanation'],
+    actionPrompt: 'The real action is hiding inside a noun. Which word holds it? Ask: what did the contractor do?',
+    actionLabel: 'explain',
     decoys: {
-      provided: '"Provided" is a verb, but an empty one. It only carries the noun after it. What did the finance team provide?',
-      funding: '"Funding" is the thing. What did the finance team do about it?'
+      provided: '"Provided" is a verb, but an empty one. It only carries the noun after it. What did the contractor provide?',
+      delay: '"Delay" is what the explanation is about. What did the contractor do?'
     },
-    verbNote: '"Justification" is the action "justify" in noun form. "Provided a justification" is active once the team leads, and "justified" says it in one word.',
-    meaningCheck: 'The original says the finance team justified the additional funding.',
-    doer: 'the finance team',
-    hiddenNoun: 'justification',
-    sampleActive: 'The finance team justified the additional funding.',
-    successNote: 'Anyone reading now knows who stands behind the request and whom to follow up with.',
+    verbNote: '"Explanation" is the action "explain" in noun form. "Provided an explanation" is active once the contractor leads, and "explained" says it in one word.',
+    meaningCheck: 'The original says the contractor explained the delay.',
+    doer: 'the contractor',
+    hiddenNoun: 'explanation',
+    sampleActive: 'The contractor explained the delay.',
+    successNote: 'The reader now knows who explained the delay and whom to ask about the next one.',
     help: {
-      question: 'Who does the justifying? Start with them, then use the verb "justify" (or "explain").',
-      starter: 'The finance team'
+      question: 'Who does the explaining? Start with them, then use the verb "explain."',
+      starter: 'The contractor'
     },
     check: {
-      doerTerms: ['finance team', 'finance', 'team', 'finance department', 'finance staff'],
-      activeVerbs: ['justified', 'justifies', 'justify', 'explained', 'explains', 'explain', 'provided', 'provides', 'provide', 'gave', 'gives', 'give', 'defended', 'defends', 'defend', 'supported', 'supports', 'support', 'documented', 'documents', 'document'],
-      bannedPhrases: ['was provided', 'is provided', 'were provided', 'has been provided', 'was justified', 'is justified'],
-      participles: ['provided', 'justified', 'explained', 'given'],
+      doerTerms: ['contractor', 'contractors', 'vendor', 'the vendor', 'contracting firm'],
+      activeVerbs: ['explained', 'explains', 'explain', 'provided', 'provides', 'provide', 'gave', 'gives', 'give', 'described', 'describes', 'describe', 'told', 'tells', 'tell', 'reported', 'reports', 'report', 'clarified', 'clarifies', 'clarify', 'accounted', 'accounts', 'account'],
+      bannedPhrases: ['was provided', 'is provided', 'were provided', 'has been provided', 'was explained', 'is explained', 'was given'],
+      participles: ['provided', 'explained', 'given', 'offered', 'sent'],
       acceptableAnswers: [
-        'the finance team justified the additional funding',
-        'the finance team provided a justification for the additional funding',
-        'the finance team explained the need for the additional funding'
+        'the contractor explained the delay',
+        'the contractor provided an explanation of the delay',
+        'the contractor explained why the work was delayed'
       ]
     }
   },

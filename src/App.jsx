@@ -220,81 +220,6 @@ function WordPicker({ tokens, selected, onToggle, signal, action, mode, t, label
   );
 }
 
-const MicIcon = () => (
-  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="inline-block align-middle">
-    <rect x="9" y="2" width="6" height="12" rx="3" />
-    <path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8" />
-  </svg>
-);
-
-/* The browser's own speech recognition: Chrome, Edge, and Safari have it. Firefox does not. */
-const SpeechAPI = typeof window !== 'undefined' ? window.SpeechRecognition || window.webkitSpeechRecognition : null;
-
-/**
- * A Speak button that dictates one utterance into a text box. Renders nothing
- * where the browser has no speech recognition, so typing is always there.
- * onText gets the final transcript; onStatus gets a short line for the live region.
- */
-function SpeakButton({ className, onText, onStatus, disabled }) {
-  const [listening, setListening] = useState(false);
-  const recRef = useRef(null);
-  useEffect(() => () => { if (recRef.current) recRef.current.abort(); }, []);
-  if (!SpeechAPI) return null;
-
-  const stop = () => { if (recRef.current) recRef.current.stop(); };
-  const start = () => {
-    const rec = new SpeechAPI();
-    rec.lang = 'en-US';
-    rec.interimResults = false;
-    rec.continuous = false;
-    rec.maxAlternatives = 1;
-    let heard = '';
-    rec.onresult = (e) => {
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) heard += e.results[i][0].transcript;
-      }
-    };
-    rec.onerror = (e) => {
-      onStatus(
-        e.error === 'not-allowed' || e.error === 'service-not-allowed'
-          ? 'The browser blocked the microphone. Allow it in the address bar, or type instead.'
-          : e.error === 'no-speech'
-          ? 'Nothing heard. Try again.'
-          : e.error === 'audio-capture'
-          ? 'No microphone found. Type instead.'
-          : 'Speech input did not work. Type instead.'
-      );
-    };
-    rec.onend = () => {
-      setListening(false);
-      recRef.current = null;
-      const text = heard.trim();
-      if (text) {
-        const tidy = text.charAt(0).toUpperCase() + text.slice(1);
-        onText(tidy);
-        onStatus(`Heard: ${tidy}`);
-      }
-    };
-    recRef.current = rec;
-    setListening(true);
-    onStatus('Listening.');
-    try {
-      rec.start();
-    } catch {
-      setListening(false);
-      recRef.current = null;
-      onStatus('Speech input did not work. Type instead.');
-    }
-  };
-
-  return (
-    <button type="button" onClick={listening ? stop : start} disabled={disabled} aria-pressed={listening} className={className}>
-      <MicIcon />
-      <span>{listening ? 'Listening… tap to stop' : 'Speak'}</span>
-    </button>
-  );
-}
-
 function Panel({ t, kind, title, children, innerRef, live }) {
   const cls = {
     signal: t.panelSignal,
@@ -736,7 +661,7 @@ export default function App() {
                     <li>Tab moves between controls. Enter or Space activates a button.</li>
                     <li>In the sentence, use the arrow keys to move between words and Enter to select one.</li>
                     <li>In the rewrite box, Enter submits and Shift + Enter adds a new line.</li>
-                    <li>To speak your sentence, use the Speak button by the rewrite box, or your device&rsquo;s dictation: the Windows key + H, or the mic key on a Mac or phone keyboard.</li>
+                    <li>To speak your sentence, use your device&rsquo;s dictation: the Windows key + H, or the mic key on a Mac or phone keyboard.</li>
                     <li>Open Display (top right) for high contrast or larger text.</li>
                     <li>A screen reader announces each step and every result.</li>
                   </ul>
@@ -784,11 +709,6 @@ export default function App() {
                 />
                 <div className="flex flex-wrap gap-3 items-center">
                   <button onClick={compareTransfer} disabled={!transferText.trim()} className={btnPrimary}>Compare with a model version</button>
-                  <SpeakButton
-                    className={btnQuiet}
-                    onStatus={setAnnounce}
-                    onText={(text) => setTransferText((a) => (a.trim() ? `${a.trim()} ${text}` : text))}
-                  />
                   <button onClick={skipTransfer} className={btnQuiet}>Skip to summary</button>
                 </div>
               </>
@@ -1078,17 +998,6 @@ export default function App() {
                     <button onClick={submitRewrite} disabled={!answer.trim() || checking} aria-busy={checking || undefined} className={btnPrimary}>
                       {checking ? 'Checking…' : 'Check my sentence'}
                     </button>
-                    <SpeakButton
-                      className={btnQuiet}
-                      disabled={checking}
-                      onStatus={setAnnounce}
-                      onText={(text) => {
-                        /* After a miss the box holds the failed attempt, so speech replaces it. Otherwise it adds on. */
-                        const missed = rewriteFeedback && !rewriteFeedback.correct;
-                        setAnswer((a) => (a.trim() && !missed ? `${a.trim()} ${text}` : text));
-                        focusLater(answerRef);
-                      }}
-                    />
                     {helpLevel < 3 && (
                       <button onClick={moreHelp} className={btnQuiet}>
                         {helpLevel === 0 ? 'Hint' : helpLevel === 1 ? 'Sentence starter' : 'Model answer'}

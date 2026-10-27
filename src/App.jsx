@@ -901,7 +901,7 @@ export default function App() {
                   <div className={`${t.successBody} px-5 py-4 border-t-0 rounded-b-2xl`}>
                     <ul className="space-y-1.5 mb-3">
                       <li className="flex items-start gap-2"><CheckIcon className={`${t.successCheck} shrink-0 mt-0.5`} /><span><strong>You put the doer first:</strong> {rewriteFeedback.doer}</span></li>
-                      <li className="flex items-start gap-2"><CheckIcon className={`${t.successCheck} shrink-0 mt-0.5`} /><span><strong>You used an action verb:</strong> {rewriteFeedback.verb}</span></li>
+                      <li className="flex items-start gap-2"><CheckIcon className={`${t.successCheck} shrink-0 mt-0.5`} /><span><strong>{rewriteFeedback.strongerVerb ? 'You gave them a verb:' : 'You used an action verb:'}</strong> {rewriteFeedback.verb}</span></li>
                       <li className="flex items-start gap-2"><CheckIcon className={`${t.successCheck} shrink-0 mt-0.5`} /><span><strong>You dropped the passive signal:</strong> &ldquo;{sentence.signalLabel}&rdquo;</span></li>
                     </ul>
                     <p className="leading-relaxed">{sentence.successNote}</p>

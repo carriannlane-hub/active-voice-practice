@@ -121,7 +121,7 @@ export const gradeSelection = (selected, targets, tokens, kind, ctx = {}) => {
 
 /* ---------------- the rewrite ---------------- */
 
-const findDoer = (words, rules) => {
+export const findDoer = (words, rules) => {
   const terms = [...rules.doerTerms, ...PRONOUN_DOERS];
   let best = null;
   for (const term of terms) {
@@ -140,7 +140,7 @@ const verbMatches = (word, verbs) => {
   return false;
 };
 
-const findVerb = (words, rules, doer) => {
+export const findVerb = (words, rules, doer) => {
   const doerWords = new Set(rules.doerTerms.flatMap((t) => t.split(' ')));
   for (let i = 0; i < words.length; i++) {
     if (doer && i >= doer.idx && i < doer.idx + doer.length) continue;

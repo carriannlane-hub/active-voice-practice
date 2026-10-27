@@ -12,6 +12,8 @@
     "we" and "they" are accepted automatically.
   - `decoys` maps tempting wrong taps in step 2 to a specific note. Any other
     wrong tap gets a general note built from `doer`.
+  - `meaningCheck` is shown under a correct rewrite when the grader thinks the
+    action drifted from the original. It is a prompt to compare, never a miss.
   - `activeVerbs` lists verbs that count as activating the sentence.
   - `participles` lists past participles that signal passive voice when they
     follow a form of "to be" (the grader also catches common ones on its own).
@@ -26,13 +28,14 @@ export const SENTENCES = [
     signalLabel: 'was made by',
     passiveNote: 'This hides who recommends, the very thing a decision maker needs to know.',
     action: ['recommendation'],
-    actionPrompt: 'What did the review panel do? Tap the word that names it, even if it is dressed up as a noun.',
+    actionPrompt: 'The real action is hiding inside a noun. Which word holds it? Ask: what did the review panel do?',
     actionLabel: 'recommend',
     decoys: {
-      made: '"Made" is the helper verb inside the passive signal. The panel did not just make something. What did they make?',
+      made: '"Made" is a verb, but an empty one. It only carries the noun after it. What did the review panel make?',
       approve: '"Approve" is what might happen to the contract. What did the review panel do?'
     },
-    verbNote: '"Recommendation" is the action "recommend" dressed up as a noun. Turn it back into a verb and the sentence comes alive.',
+    verbNote: '"Recommendation" is the action "recommend" dressed up as a noun. "Made a recommendation" is active once the panel leads, and "recommended" says it in one word.',
+    meaningCheck: 'The original says the review panel recommended approving the new contract.',
     doer: 'the review panel',
     hiddenNoun: 'recommendation',
     sampleActive: 'The review panel recommended approving the new contract.',
@@ -61,13 +64,14 @@ export const SENTENCES = [
     signalLabel: 'was provided by',
     passiveNote: 'It buries who stands behind the request, so the reader cannot tell whom to follow up with.',
     action: ['justification'],
-    actionPrompt: 'What did the finance team do? Tap the word that names it, even if it is dressed up as a noun.',
+    actionPrompt: 'The real action is hiding inside a noun. Which word holds it? Ask: what did the finance team do?',
     actionLabel: 'justify',
     decoys: {
-      provided: '"Provided" is the helper verb inside the passive signal. The finance team did not just provide something. What did they provide?',
+      provided: '"Provided" is a verb, but an empty one. It only carries the noun after it. What did the finance team provide?',
       funding: '"Funding" is the thing. What did the finance team do about it?'
     },
-    verbNote: '"Justification" is the action "justify" in noun form. The doer did not provide a justification; they justified.',
+    verbNote: '"Justification" is the action "justify" in noun form. "Provided a justification" is active once the team leads, and "justified" says it in one word.',
+    meaningCheck: 'The original says the finance team justified the additional funding.',
     doer: 'the finance team',
     hiddenNoun: 'justification',
     sampleActive: 'The finance team justified the additional funding.',
@@ -99,10 +103,11 @@ export const SENTENCES = [
     actionPrompt: 'What did the project team do? Tap the two words that name it.',
     actionLabel: 'assessed, documented',
     decoys: {
-      were: '"Were" is the helper verb inside the passive signal. What did the project team actually do?',
+      were: '"Were" is the helper verb in the passive signal. It carries no action of its own. What did the project team do?',
       risks: '"Risks" is what the team acted on. What did they do to the risks?'
     },
     verbNote: 'Both verbs are already here. They just need the doer in front of them.',
+    meaningCheck: 'The original says the project team assessed the risks and documented them in the report.',
     doer: 'the project team',
     hiddenNoun: null,
     sampleActive: 'The project team assessed the risks and documented them in the report.',
@@ -131,13 +136,14 @@ export const SENTENCES = [
     signalLabel: 'was completed by',
     passiveNote: 'It hides who is accountable for the check, which is central to any compliance record.',
     action: ['review'],
-    actionPrompt: 'What did the inspector do? Tap the word that names it, even if it is dressed up as a noun.',
+    actionPrompt: 'The real action is hiding inside a noun. Which word holds it? Ask: what did the inspector do?',
     actionLabel: 'review',
     decoys: {
-      completed: '"Completed" is the helper verb inside the passive signal. The inspector did not just complete something. What did they complete?',
+      completed: '"Completed" is a verb, but an empty one. It only carries the noun after it. What did the inspector complete?',
       requirements: '"Requirements" is what the inspector acted on. What did they do to them?'
     },
-    verbNote: '"Review" is doing double duty as a noun here. As a verb, it is the real action: the inspector reviewed.',
+    verbNote: '"Review" is doing double duty as a noun here. "Completed a review" is active once the inspector leads, and "reviewed" says it in one word.',
+    meaningCheck: 'The original says the inspector reviewed the safety requirements.',
     doer: 'the inspector',
     hiddenNoun: 'review',
     sampleActive: 'The inspector reviewed the safety requirements.',

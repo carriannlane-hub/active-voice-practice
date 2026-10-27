@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { SENTENCES, tokenize, resolveTargets } from './sentences';
-import { gradeRewrite, gradeSelection, normalize } from './grader';
+import { gradeSelection, normalize } from './grader';
+import { gradeLocally, FIRM_REASONS } from '../lib/hybrid.js';
 
 /*
   Active Voice Practice
@@ -279,6 +280,7 @@ export default function App() {
   const [helpLevel, setHelpLevel] = useState(0); // 0 none, 1 question, 2 starter, 3 model
   const [usedModel, setUsedModel] = useState(false);
   const [solved, setSolved] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [announce, setAnnounce] = useState('');
 
   const mainRef = useRef(null);
@@ -391,8 +393,35 @@ export default function App() {
     focusLater(taskRef);
   };
 
-  const submitRewrite = () => {
-    const result = gradeRewrite(answer, sentence);
+  /* Ask the server to grade. Rules there decide the certain cases, the model
+     judges the rest. If the server is unreachable or slow, grade here with rules. */
+  const gradeOnServer = async (text) => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 12000);
+    try {
+      const res = await fetch('/api/grade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: sentence.id, text }),
+        signal: ctrl.signal
+      });
+      if (!res.ok) throw new Error(`status ${res.status}`);
+      const data = await res.json();
+      if (typeof data.correct !== 'boolean') throw new Error('bad shape');
+      return data;
+    } catch {
+      return gradeLocally(text, sentence);
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
+  const submitRewrite = async () => {
+    if (checking) return;
+    setChecking(true);
+    setAnnounce('Checking your sentence.');
+    const result = await gradeOnServer(answer.trim());
+    setChecking(false);
     const tries = rewriteTries + 1;
     setRewriteTries(tries);
     if (result.correct) {
@@ -468,7 +497,7 @@ export default function App() {
   };
 
   const onAnswerKey = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey && !solved && answer.trim()) {
+    if (e.key === 'Enter' && !e.shiftKey && !solved && !checking && answer.trim()) {
       e.preventDefault();
       submitRewrite();
     }
@@ -812,7 +841,9 @@ export default function App() {
                   />
                   <p id="avp-answer-help" className={`text-sm mb-4 ${t.muted}`}>Enter submits. Shift + Enter adds a line.</p>
                   <div className="flex flex-wrap gap-3 items-center mb-4">
-                    <button onClick={submitRewrite} disabled={!answer.trim()} className={btnPrimary}>Check my sentence</button>
+                    <button onClick={submitRewrite} disabled={!answer.trim() || checking} aria-busy={checking || undefined} className={btnPrimary}>
+                      {checking ? 'Checking…' : 'Check my sentence'}
+                    </button>
                     {helpLevel < 3 && (
                       <button onClick={moreHelp} className={btnQuiet}>
                         {helpLevel === 0 ? 'Hint' : helpLevel === 1 ? 'Sentence starter' : 'Model answer'}
@@ -824,7 +855,7 @@ export default function App() {
 
               {rewriteFeedback && !rewriteFeedback.correct && (
                 <div className="mb-4">
-                <Panel t={t} kind="miss" title={rewriteFeedback.reason === 'passive' || rewriteFeedback.reason === 'short' ? 'Not there yet.' : 'Close.'} live innerRef={feedbackRef}>
+                <Panel t={t} kind="miss" title={FIRM_REASONS.includes(rewriteFeedback.reason) ? 'Not there yet.' : 'Close.'} live innerRef={feedbackRef}>
                   {rewriteFeedback.note}
                 </Panel>
                 </div>
@@ -874,6 +905,12 @@ export default function App() {
                       <li className="flex items-start gap-2"><CheckIcon className={`${t.successCheck} shrink-0 mt-0.5`} /><span><strong>You dropped the passive signal:</strong> &ldquo;{sentence.signalLabel}&rdquo;</span></li>
                     </ul>
                     <p className="leading-relaxed">{sentence.successNote}</p>
+                    {rewriteFeedback.strongerVerb && (
+                      <p className="mt-3 leading-relaxed"><span className="font-medium">One verb does the same job:</span> {rewriteFeedback.strongerVerb}.</p>
+                    )}
+                    {rewriteFeedback.meaningNote && (
+                      <p className="mt-3 leading-relaxed">{rewriteFeedback.meaningNote}</p>
+                    )}
                     {normalize(answer) !== normalize(sentence.sampleActive) && !rewriteFeedback.usedModel && (
                       <p className={`mt-3 text-sm ${t.soft}`}><span className="font-medium">Another strong version:</span> &ldquo;{sentence.sampleActive}&rdquo;</p>
                     )}

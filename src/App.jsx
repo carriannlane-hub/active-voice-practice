@@ -505,7 +505,7 @@ export default function App() {
     } else {
       setPhase('transfer');
       setTransferText('');
-      setAnnounce('All four sentences done. One more, on your own, with no steps.');
+      setAnnounce('All four sentences done. One more, on your own.');
       focusLater(mainRef);
     }
   };
@@ -619,7 +619,7 @@ export default function App() {
             <p className={`${t.soft} mb-8 leading-relaxed text-lg`}>
               Passive voice hides who decided, who recommended, and who must answer for it.
               In four sentences from workplace documents, you will spot it, find the action, and name the doer:
-              the person or group who acts. Then one sentence on your own, with no steps.
+              the person or group who acts. Then one sentence on your own.
             </p>
 
             <ol className="grid gap-3 sm:grid-cols-3 mb-8">
@@ -686,9 +686,9 @@ export default function App() {
           {chrome}
           <main id="avp-main" ref={mainRef} tabIndex={-1} className={`${t.ring} ${t.card} rounded-3xl p-7 sm:p-10`}>
             <p className={`text-sm font-medium mb-2 ${t.soft}`}>One more, on your own</p>
-            <h1 className="text-3xl sm:text-4xl font-bold mb-3 tracking-tight">No steps this time.</h1>
+            <h1 className="text-3xl sm:text-4xl font-bold mb-3 tracking-tight">This one is all yours.</h1>
             <p className={`${t.soft} mb-6 leading-relaxed`}>
-              Here is a sentence from a memo. Rewrite it in active voice, then compare your version with a model version. Nothing is graded.
+              Here is a sentence from a memo. Rewrite it in active voice, then compare your version with a model version.
             </p>
 
             <span className={`inline-block text-xs px-2.5 py-1 rounded-full mb-3 ${t.badge}`}>{TRANSFER.docType}</span>
@@ -725,7 +725,7 @@ export default function App() {
                   <ul className="list-disc list-inside space-y-1 leading-relaxed">
                     {TRANSFER.selfCheck.map((q) => <li key={q}>{q}</li>)}
                   </ul>
-                  <p className={`mt-3 text-sm ${t.soft}`}>Yours does not need to match the model. It needs a yes to all three.</p>
+                  <p className={`mt-3 text-sm ${t.soft}`}>Different wording is fine. Look for a yes to all three.</p>
                 </div>
                 <button ref={nextRef} onClick={finishUp} className={`${btnPrimary} mt-2`}>See your summary <span aria-hidden="true">→</span></button>
               </div>
@@ -757,10 +757,7 @@ export default function App() {
         <div className="max-w-2xl mx-auto">
           {chrome}
           <main id="avp-main" ref={mainRef} tabIndex={-1} className={`${t.ring} ${t.card} rounded-3xl p-7 sm:p-10`}>
-            <h1 className="text-3xl sm:text-4xl font-bold mb-2 tracking-tight">You activated all {total} sentences.</h1>
-            <p className={`${t.soft} mb-6 leading-relaxed`}>
-              This is not a score. It is what you did, in your own words, and what to look for the next time you edit.
-            </p>
+            <h1 className="text-3xl sm:text-4xl font-bold mb-6 tracking-tight">You activated all {total} sentences.</h1>
 
             {/* ---- patterns ---- */}
             <h2 className="text-xl font-semibold mb-3">Your patterns</h2>

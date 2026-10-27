@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { SENTENCES, tokenize, resolveTargets } from './sentences';
+import { SENTENCES, TRANSFER, tokenize, resolveTargets } from './sentences';
 import { gradeSelection, normalize } from './grader';
 import { gradeLocally, FIRM_REASONS } from '../lib/hybrid.js';
+import { findPatterns, checklistText } from '../lib/patterns.js';
 
 /*
   Active Voice Practice
@@ -15,7 +16,7 @@ import { gradeLocally, FIRM_REASONS } from '../lib/hybrid.js';
   Sentences and grading rules live in sentences.js and grader.js.
 */
 
-const STORAGE_KEY = 'avp-progress-v2';
+const STORAGE_KEY = 'avp-progress-v3';
 const PREFS_KEY = 'avp-prefs-v2';
 
 const STAGES = [
@@ -262,10 +263,12 @@ export default function App() {
 
   /* journey state */
   const savedProgress = useMemo(() => load(STORAGE_KEY), []);
-  const [phase, setPhase] = useState('intro'); // intro | practice | finish
+  const [phase, setPhase] = useState('intro'); // intro | practice | transfer | finish
   const [current, setCurrent] = useState(0);
   const [results, setResults] = useState([]);
-  const hasSaved = Boolean(savedProgress && savedProgress.phase === 'practice' && savedProgress.results);
+  const [transfer, setTransfer] = useState(null); // { text } | { skipped: true }
+  const [transferText, setTransferText] = useState('');
+  const hasSaved = Boolean(savedProgress && (savedProgress.phase === 'practice' || savedProgress.phase === 'transfer') && savedProgress.results);
 
   /* per-sentence state */
   const [stage, setStage] = useState('spot');
@@ -277,10 +280,13 @@ export default function App() {
   const [answer, setAnswer] = useState('');
   const [rewriteFeedback, setRewriteFeedback] = useState(null); // { correct, ... }
   const [rewriteTries, setRewriteTries] = useState(0);
+  const [attempts, setAttempts] = useState([]); // rewrite misses: { text, reason }
+  const [actionTaps, setActionTaps] = useState([]); // wrong words tapped in step 2
   const [helpLevel, setHelpLevel] = useState(0); // 0 none, 1 question, 2 starter, 3 model
   const [usedModel, setUsedModel] = useState(false);
   const [solved, setSolved] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [announce, setAnnounce] = useState('');
 
   const mainRef = useRef(null);
@@ -307,6 +313,8 @@ export default function App() {
     setAnswer('');
     setRewriteFeedback(null);
     setRewriteTries(0);
+    setAttempts([]);
+    setActionTaps([]);
     setHelpLevel(0);
     setUsedModel(false);
     setSolved(false);
@@ -314,9 +322,10 @@ export default function App() {
 
   /* persist journey position (sentence-level, so a refresh resumes at the sentence start) */
   useEffect(() => {
-    if (phase === 'practice') save(STORAGE_KEY, { phase, current, results });
-    if (phase === 'finish') save(STORAGE_KEY, { phase, current, results });
-  }, [phase, current, results]);
+    if (phase === 'practice' || phase === 'transfer' || phase === 'finish') {
+      save(STORAGE_KEY, { phase, current, results, transfer });
+    }
+  }, [phase, current, results, transfer]);
 
   /* announcements */
   useEffect(() => {
@@ -335,13 +344,18 @@ export default function App() {
     if (resume && hasSaved) {
       setCurrent(Math.min(savedProgress.current, total - 1));
       setResults(savedProgress.results);
+      setTransfer(null);
+      resetSentence();
+      setPhase(savedProgress.phase === 'transfer' ? 'transfer' : 'practice');
     } else {
       clear(STORAGE_KEY);
       setCurrent(0);
       setResults([]);
+      setTransfer(null);
+      resetSentence();
+      setPhase('practice');
     }
-    resetSentence();
-    setPhase('practice');
+    setTransferText('');
     focusLater(mainRef);
   };
 
@@ -366,6 +380,10 @@ export default function App() {
       focusLater(nextRef);
     } else {
       setStageMisses((m) => ({ ...m, [stage]: m[stage] + 1 }));
+      if (stage === 'action') {
+        const wrong = selected.filter((i) => !targets.includes(i)).map((i) => tokens[i].clean);
+        setActionTaps((a) => [...a, ...wrong]);
+      }
       setStageFeedback({ kind: 'miss', partial: result.kind === 'partial', text: result.text });
       setAnnounce(`${result.kind === 'partial' ? 'Close.' : 'Not there yet.'} ${result.text}`);
       /* Drop the wrong taps so the next try starts clean. Right taps stay marked. */
@@ -431,6 +449,7 @@ export default function App() {
       focusLater(nextRef);
     } else {
       setRewriteFeedback({ ...result, tries });
+      setAttempts((a) => [...a, { text: answer.trim(), reason: result.reason }]);
       setAnnounce(`Not there yet. ${result.note}`);
       setTimeout(() => {
         if (answerRef.current) {
@@ -464,14 +483,18 @@ export default function App() {
   };
 
   const continueNext = () => {
+    /* What the summary needs: the learner's own attempts and taps, not counts of tries. */
     const record = {
       id: sentence.id,
       rewrite: answer.trim(),
-      rewriteTries,
       helpLevel,
       usedModel,
-      spotFirstTry: stageMisses.spot === 0 && !stageRevealed.spot,
-      actionFirstTry: stageMisses.action === 0 && !stageRevealed.action
+      attempts,
+      actionTaps,
+      actionRevealed: stageRevealed.action,
+      spotRevealed: stageRevealed.spot,
+      strongerVerb: (rewriteFeedback && rewriteFeedback.strongerVerb) || null,
+      meaningNote: Boolean(rewriteFeedback && rewriteFeedback.meaningNote)
     };
     const nextResults = [...results.slice(0, current), record];
     setResults(nextResults);
@@ -480,15 +503,37 @@ export default function App() {
       resetSentence();
       focusLater(mainRef);
     } else {
-      setPhase('finish');
-      setAnnounce('You finished all sentences. Here is your summary.');
+      setPhase('transfer');
+      setTransferText('');
+      setAnnounce('All four sentences done. One more, on your own, with no steps.');
       focusLater(mainRef);
     }
+  };
+
+  const compareTransfer = () => {
+    setTransfer({ text: transferText.trim() });
+    setAnnounce(`Your version and a model version are side by side. The model version: ${TRANSFER.model}`);
+    focusLater(nextRef);
+  };
+
+  const skipTransfer = () => {
+    setTransfer({ skipped: true });
+    setPhase('finish');
+    setAnnounce('Here is your summary.');
+    focusLater(mainRef);
+  };
+
+  const finishUp = () => {
+    setPhase('finish');
+    setAnnounce('Here is your summary.');
+    focusLater(mainRef);
   };
 
   const restart = () => {
     clear(STORAGE_KEY);
     setResults([]);
+    setTransfer(null);
+    setTransferText('');
     setCurrent(0);
     resetSentence();
     setPhase('practice');
@@ -574,7 +619,7 @@ export default function App() {
             <p className={`${t.soft} mb-8 leading-relaxed text-lg`}>
               Passive voice hides who decided, who recommended, and who must answer for it.
               In four sentences from workplace documents, you will spot it, find the action, and name the doer:
-              the person or group who acts.
+              the person or group who acts. Then one sentence on your own, with no steps.
             </p>
 
             <ol className="grid gap-3 sm:grid-cols-3 mb-8">
@@ -594,13 +639,15 @@ export default function App() {
             <div className="flex flex-wrap gap-3 items-center">
               {hasSaved ? (
                 <>
-                  <button onClick={() => begin(true)} className={btnPrimary}>Resume at sentence {Math.min(savedProgress.current, total - 1) + 1}</button>
+                  <button onClick={() => begin(true)} className={btnPrimary}>
+                    {savedProgress.phase === 'transfer' ? 'Resume at the last sentence' : `Resume at sentence ${Math.min(savedProgress.current, total - 1) + 1}`}
+                  </button>
                   <button onClick={() => begin(false)} className={btnQuiet}>Start over</button>
                 </>
               ) : (
                 <button onClick={() => begin(false)} className={btnPrimary}>Begin practice</button>
               )}
-              <span className={`text-sm ${t.muted}`}>About 5 minutes</span>
+              <span className={`text-sm ${t.muted}`}>About 7 minutes</span>
             </div>
 
             <div className="mt-8">
@@ -628,21 +675,82 @@ export default function App() {
 
   /* =========================== FINISH =========================== */
 
-  if (phase === 'finish') {
-    const spotCount = results.filter((r) => r.spotFirstTry).length;
-    const actionCount = results.filter((r) => r.actionFirstTry).length;
-    const ownCount = results.filter((r) => !r.usedModel).length;
-    const stat = (n, label) => (
-      <div className={`rounded-2xl p-4 ${t.panelRight}`}>
-        <p className="text-3xl font-bold leading-none mb-1">{n}<span className={`text-base font-medium ${t.soft}`}> of {total}</span></p>
-        <p className={`text-sm ${t.soft}`}>{label}</p>
+  /* =========================== ON YOUR OWN =========================== */
+
+  if (phase === 'transfer') {
+    const compared = Boolean(transfer && transfer.text);
+    const cardBg = hc ? 'bg-zinc-900 border border-zinc-500' : 'bg-stone-50 border border-stone-200';
+    return (
+      <div className={rootClass}>
+        <div className="max-w-2xl mx-auto">
+          {chrome}
+          <main id="avp-main" ref={mainRef} tabIndex={-1} className={`${t.ring} ${t.card} rounded-3xl p-7 sm:p-10`}>
+            <p className={`text-sm font-medium mb-2 ${t.soft}`}>One more, on your own</p>
+            <h1 className="text-3xl sm:text-4xl font-bold mb-3 tracking-tight">No steps this time.</h1>
+            <p className={`${t.soft} mb-6 leading-relaxed`}>
+              Here is a sentence from a memo. Rewrite it in active voice, then compare your version with a model version. Nothing is graded.
+            </p>
+
+            <span className={`inline-block text-xs px-2.5 py-1 rounded-full mb-3 ${t.badge}`}>{TRANSFER.docType}</span>
+            <blockquote className={`rounded-2xl p-4 sm:p-5 mb-6 text-lg leading-relaxed ${cardBg}`}>{TRANSFER.original}</blockquote>
+
+            {!compared ? (
+              <>
+                <label htmlFor="avp-transfer" className="block font-semibold mb-2">Your active-voice sentence</label>
+                <textarea
+                  id="avp-transfer"
+                  value={transferText}
+                  onChange={(e) => setTransferText(e.target.value)}
+                  rows={3}
+                  placeholder="Start with who does it…"
+                  className={`${t.ring} ${t.input} w-full p-4 rounded-2xl mb-4 resize-y text-lg`}
+                />
+                <div className="flex flex-wrap gap-3 items-center">
+                  <button onClick={compareTransfer} disabled={!transferText.trim()} className={btnPrimary}>Compare with a model version</button>
+                  <button onClick={skipTransfer} className={btnQuiet}>Skip to summary</button>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-4">
+                <div className={`rounded-2xl p-4 sm:p-5 ${t.panelRight}`}>
+                  <p className="font-semibold mb-1">Your version</p>
+                  <p className="text-lg leading-relaxed">{transfer.text}</p>
+                </div>
+                <div className={`rounded-2xl p-4 sm:p-5 ${t.panelHelp}`}>
+                  <p className="font-semibold mb-1">A model version</p>
+                  <p className="text-lg leading-relaxed">{TRANSFER.model}</p>
+                </div>
+                <div className={`rounded-2xl p-4 sm:p-5 ${t.panelAction}`}>
+                  <p className="font-semibold mb-2">Check your own</p>
+                  <ul className="list-disc list-inside space-y-1 leading-relaxed">
+                    {TRANSFER.selfCheck.map((q) => <li key={q}>{q}</li>)}
+                  </ul>
+                  <p className={`mt-3 text-sm ${t.soft}`}>Yours does not need to match the model. It needs a yes to all three.</p>
+                </div>
+                <button ref={nextRef} onClick={finishUp} className={`${btnPrimary} mt-2`}>See your summary <span aria-hidden="true">→</span></button>
+              </div>
+            )}
+          </main>
+          {footer}
+        </div>
       </div>
     );
-    const triesLabel = (r) => {
-      if (r.usedModel) return 'With the model';
-      if (r.rewriteTries === 1 && r.helpLevel === 0) return 'First try';
-      if (r.rewriteTries === 1) return 'First try, with a hint';
-      return `${r.rewriteTries} tries`;
+  }
+
+  /* =========================== SUMMARY =========================== */
+
+  if (phase === 'finish') {
+    const { found, tagsFor, checklist } = findPatterns(results, SENTENCES);
+    const cardBg = hc ? 'bg-zinc-900 border border-zinc-500' : 'bg-stone-50 border border-stone-200';
+    const copyChecklist = async () => {
+      try {
+        await navigator.clipboard.writeText(checklistText(checklist));
+        setCopied(true);
+        setAnnounce('Checklist copied.');
+        setTimeout(() => setCopied(false), 2500);
+      } catch {
+        setAnnounce('Copy did not work here. Select the list and copy it by hand.');
+      }
     };
     return (
       <div className={rootClass}>
@@ -650,14 +758,39 @@ export default function App() {
           {chrome}
           <main id="avp-main" ref={mainRef} tabIndex={-1} className={`${t.ring} ${t.card} rounded-3xl p-7 sm:p-10`}>
             <h1 className="text-3xl sm:text-4xl font-bold mb-2 tracking-tight">You activated all {total} sentences.</h1>
-            <p className={`${t.soft} mb-6 leading-relaxed`}>Every rewrite below names who acts and what they do. That is the move to carry into your next brief, report, or agreement.</p>
+            <p className={`${t.soft} mb-6 leading-relaxed`}>
+              This is not a score. It is what you did, in your own words, and what to look for the next time you edit.
+            </p>
 
-            <div className="grid gap-3 sm:grid-cols-3 mb-8">
-              {stat(spotCount, 'spotted the signal first try')}
-              {stat(actionCount, 'found the action first try')}
-              {stat(ownCount, 'wrote in your own words')}
-            </div>
+            {/* ---- patterns ---- */}
+            <h2 className="text-xl font-semibold mb-3">Your patterns</h2>
+            {found.length === 0 ? (
+              <div className={`rounded-2xl p-4 sm:p-5 mb-8 ${t.panelRight}`}>
+                <p className="font-semibold mb-1">Clean run.</p>
+                <p className="leading-relaxed">Every rewrite put the doer first with a real verb on the first check. The checklist below is still yours to keep.</p>
+              </div>
+            ) : (
+              <ol className="space-y-4 mb-8">
+                {found.map((p) => (
+                  <li key={p.id} className={`rounded-2xl p-4 sm:p-5 ${cardBg}`}>
+                    <h3 className="text-lg font-semibold mb-2">{p.name}</h3>
+                    <ul className="space-y-2 mb-3">
+                      {p.examples.slice(0, 2).map((ex, k) => (
+                        <li key={k} className="leading-relaxed">
+                          <span className={`text-xs px-2 py-0.5 rounded-full mr-2 ${t.badge}`}>{ex.docType}</span>
+                          {ex.before && <span>&ldquo;{ex.before}&rdquo;</span>}
+                          {ex.after && <span> <span aria-hidden="true">&rarr;</span><span className="sr-only">became</span> &ldquo;{ex.after}&rdquo;</span>}
+                          {ex.note && <span className={`block text-sm mt-1 ${t.soft}`}>{ex.note}</span>}
+                        </li>
+                      ))}
+                    </ul>
+                    <p className={`rounded-xl px-3 py-2 text-sm ${t.panelHelp}`}><strong>When you edit:</strong> {p.cue}</p>
+                  </li>
+                ))}
+              </ol>
+            )}
 
+            {/* ---- rewrites ---- */}
             <h2 className="text-xl font-semibold mb-3">Your rewrites</h2>
             <ol className="space-y-4 mb-8">
               {SENTENCES.map((s, i) => {
@@ -665,11 +798,12 @@ export default function App() {
                 if (!r) return null;
                 const toks = tokenize(s.original);
                 const sig = resolveTargets(toks, s.signal);
+                const tags = tagsFor[s.id] || [];
                 return (
-                  <li key={s.id} className={`rounded-2xl p-4 sm:p-5 ${hc ? 'bg-zinc-900 border border-zinc-500' : 'bg-stone-50 border border-stone-200'}`}>
+                  <li key={s.id} className={`rounded-2xl p-4 sm:p-5 ${cardBg}`}>
                     <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                       <span className={`text-xs px-2.5 py-1 rounded-full ${t.badge}`}>{s.docType}</span>
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${t.badgeGood}`}>{triesLabel(r)}</span>
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${t.badgeGood}`}>{tags.length ? tags.join(' · ') : 'Clean'}</span>
                     </div>
                     <p className={`text-sm mb-2 ${t.muted}`}>
                       {toks.map((tok, k) => (
@@ -685,13 +819,34 @@ export default function App() {
               })}
             </ol>
 
+            {/* ---- on your own ---- */}
+            {transfer && transfer.text && (
+              <>
+                <h2 className="text-xl font-semibold mb-3">On your own</h2>
+                <div className={`rounded-2xl p-4 sm:p-5 mb-8 ${cardBg}`}>
+                  <p className={`text-sm mb-2 ${t.muted}`}>{TRANSFER.original}</p>
+                  <p className="text-lg font-medium flex items-start gap-2 mb-2">
+                    <CheckIcon className={`${t.successCheck} shrink-0 mt-1`} />
+                    <span>{transfer.text}</span>
+                  </p>
+                  <p className={`text-sm ${t.soft}`}><span className="font-medium">Model version:</span> {TRANSFER.model}</p>
+                </div>
+              </>
+            )}
+
+            {/* ---- checklist ---- */}
             <div className={`rounded-2xl p-5 mb-8 ${t.panelHelp}`}>
-              <h2 className="font-semibold mb-2">Carry this into your writing</h2>
-              <ol className="list-decimal list-inside space-y-1">
-                <li>Scan for <strong>was, were, is, are, be</strong> followed by a past-tense verb.</li>
-                <li>Look for <strong>by</strong> right after it. The doer is hiding there, or missing.</li>
-                <li>Watch for nouns ending in <strong>-tion</strong> or <strong>-ment</strong>. A verb is trapped inside.</li>
-                <li>Ask <strong>who does this?</strong> Start the sentence with them.</li>
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                <h2 className="font-semibold">Your editing checklist</h2>
+                <button onClick={copyChecklist} className={btnQuiet} aria-live="polite">{copied ? 'Copied' : 'Copy'}</button>
+              </div>
+              <ol className="list-decimal list-inside space-y-2">
+                {checklist.map((c, i) => (
+                  <li key={i} className="leading-relaxed">
+                    {c.text}
+                    {c.example && <span className={`block ml-5 text-sm ${t.soft}`}>Your example: &ldquo;{c.example}&rdquo;</span>}
+                  </li>
+                ))}
               </ol>
             </div>
 

@@ -46,7 +46,7 @@ export const SENTENCES = [
     },
     check: {
       doerTerms: ['review panel', 'panel', 'reviewers', 'review team'],
-      activeVerbs: ['recommended', 'recommends', 'recommend', 'advised', 'advises', 'advise', 'urged', 'urges', 'urge', 'proposed', 'proposes', 'propose'],
+      activeVerbs: ['recommended', 'recommends', 'recommend', 'advised', 'advises', 'advise', 'urged', 'urges', 'urge', 'proposed', 'proposes', 'propose', 'made', 'makes', 'make'],
       bannedPhrases: ['was made', 'is made', 'were made', 'has been made', 'was recommended', 'is recommended'],
       participles: ['made', 'recommended', 'approved', 'proposed', 'advised'],
       acceptableAnswers: [
@@ -82,7 +82,7 @@ export const SENTENCES = [
     },
     check: {
       doerTerms: ['finance team', 'finance', 'team', 'finance department', 'finance staff'],
-      activeVerbs: ['justified', 'justifies', 'justify', 'explained', 'explains', 'explain', 'provided', 'provides', 'provide', 'defended', 'defends', 'defend', 'supported', 'supports', 'support', 'documented', 'documents', 'document'],
+      activeVerbs: ['justified', 'justifies', 'justify', 'explained', 'explains', 'explain', 'provided', 'provides', 'provide', 'gave', 'gives', 'give', 'defended', 'defends', 'defend', 'supported', 'supports', 'support', 'documented', 'documents', 'document'],
       bannedPhrases: ['was provided', 'is provided', 'were provided', 'has been provided', 'was justified', 'is justified'],
       participles: ['provided', 'justified', 'explained', 'given'],
       acceptableAnswers: [
@@ -165,6 +165,23 @@ export const SENTENCES = [
     }
   }
 ];
+
+/*
+  The sentence the learner rewrites on their own at the end: no steps, no
+  grading. The app shows their version beside a model version and asks three
+  questions they answer for themselves. Two passives, two hidden verbs.
+*/
+export const TRANSFER = {
+  id: 'memo',
+  docType: 'Memo',
+  original: 'A request for an extension to the reporting deadline was submitted by the program office, and approval was granted by the director.',
+  model: 'The program office requested an extension to the reporting deadline, and the director approved it.',
+  selfCheck: [
+    'Does each part of your sentence start with who acts?',
+    'Did the hidden verbs come out: requested, approved?',
+    'Is every "was … by" gone?'
+  ]
+};
 
 /* ---- tokenizing helpers shared by the app ---- */
 

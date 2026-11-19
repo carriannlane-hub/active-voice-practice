@@ -311,8 +311,8 @@ export default function App() {
   /* Bring a note into view: on a phone or in a short frame it can land below the fold. */
   const reveal = (ref) => setTimeout(() => {
     if (!ref.current || !ref.current.scrollIntoView) return;
-    const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    ref.current.scrollIntoView({ block: 'nearest', behavior: calm ? 'auto' : 'smooth' });
+    /* An instant move: smooth scrolling can stall in embedded frames and background tabs. */
+    ref.current.scrollIntoView({ block: 'nearest', behavior: 'auto' });
   }, 90);
 
   const resetSentence = useCallback(() => {

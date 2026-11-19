@@ -101,7 +101,7 @@ export const gradeSelection = (selected, targets, tokens, kind, ctx = {}) => {
       return `${name(i)} belongs to the passive signal. Which word names what ${doer} did?`;
     }
     return ctx.nounForm
-      ? `Look past ${name(i)}. Which word names what ${doer} did? In this sentence it is a noun.`
+      ? `Look past ${name(i)}. Ask what ${doer} did. One noun in this sentence holds that verb.`
       : `Look past ${name(i)}. Which words name what ${doer} did?`;
   };
 

@@ -191,7 +191,7 @@ export const findVerb = (words, rules, doer) => {
   return null;
 };
 
-const findPassive = (words, rules) => {
+export const findPassive = (words, rules) => {
   const participles = [...(rules.participles || []), ...COMMON_PARTICIPLES];
   for (let i = 0; i < words.length - 1; i++) {
     if (!BE_FORMS.includes(words[i])) continue;

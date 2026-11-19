@@ -78,7 +78,7 @@ Design decisions Carriann made. Keep them:
 | `lib/hybrid.js` | `preCheck`, `fromModel`, `gradeLocally`, `asTyped` |
 | `lib/grader-prompt.js` | Model id, effort, system prompt, output schema |
 | `lib/patterns.js` | Summary patterns, sentence tags, checklist |
-| `api/grade.js` | The Vercel function. Rate limit 30 a minute per visitor, 300 character cap |
+| `api/grade.js` | The Vercel function. Rate limit 300 a minute per network address, 300 character cap |
 | `eval/cases.json` | 40 learner rewrites with expected verdicts, 3 marked debatable |
 | `eval/run-eval.mjs` | Runs the cases on one or more models, two runs each |
 | `eval/dev-api.mjs` | Local stand-in for the function on port 3001 |

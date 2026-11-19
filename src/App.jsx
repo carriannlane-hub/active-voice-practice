@@ -85,8 +85,8 @@ const THEMES = {
     btnQuiet: 'bg-zinc-900 text-white border border-white hover:bg-zinc-800',
     word: 'bg-zinc-900 text-white border border-zinc-400 hover:border-white',
     wordSelected: 'bg-yellow-300 text-black border border-yellow-300',
-    wordSignal: 'bg-white text-black border border-white',
-    wordAction: 'bg-cyan-300 text-black border border-cyan-300',
+    wordSignal: 'bg-white text-black border border-white underline decoration-dotted decoration-2 underline-offset-4',
+    wordAction: 'bg-cyan-300 text-black border border-cyan-300 font-bold',
     wordPlain: 'text-white border border-transparent',
     panelSignal: 'bg-zinc-900 border-2 border-white text-white',
     panelAction: 'bg-zinc-900 border-2 border-cyan-300 text-white',
@@ -332,12 +332,15 @@ export default function App() {
     setSolved(false);
   }, []);
 
-  /* persist journey position (sentence-level, so a refresh resumes at the sentence start) */
+  /* persist journey position, including the step inside the current sentence */
   useEffect(() => {
     if (phase === 'practice' || phase === 'transfer' || phase === 'finish') {
-      save(STORAGE_KEY, { phase, current, results, transfer });
+      const step = phase === 'practice'
+        ? { stage, answer, attempts, actionTaps, helpLevel, usedModel, stageRevealed, rewriteTries }
+        : null;
+      save(STORAGE_KEY, { phase, current, results, transfer, step });
     }
-  }, [phase, current, results, transfer]);
+  }, [phase, current, results, transfer, stage, answer, attempts, actionTaps, helpLevel, usedModel, stageRevealed, rewriteTries]);
 
   /* announcements */
   useEffect(() => {
@@ -358,6 +361,17 @@ export default function App() {
       setResults(savedProgress.results);
       setTransfer(null);
       resetSentence();
+      const st = savedProgress.step;
+      if (savedProgress.phase === 'practice' && st && STAGES.some((x) => x.key === st.stage)) {
+        setStage(st.stage);
+        setAnswer(typeof st.answer === 'string' ? st.answer : '');
+        setAttempts(Array.isArray(st.attempts) ? st.attempts : []);
+        setActionTaps(Array.isArray(st.actionTaps) ? st.actionTaps : []);
+        setHelpLevel(Number(st.helpLevel) || 0);
+        setUsedModel(Boolean(st.usedModel));
+        setStageRevealed({ spot: Boolean(st.stageRevealed && st.stageRevealed.spot), action: Boolean(st.stageRevealed && st.stageRevealed.action) });
+        setRewriteTries(Number(st.rewriteTries) || 0);
+      }
       setPhase(savedProgress.phase === 'transfer' ? 'transfer' : 'practice');
     } else {
       clear(STORAGE_KEY);
@@ -474,7 +488,7 @@ export default function App() {
     if (result.correct) {
       setRewriteFeedback({ ...result, tries, helpLevel, usedModel });
       setSolved(true);
-      setAnnounce(`Yes. That is active voice. ${sentence.successNote}`);
+      setAnnounce(`Yes. That is active voice. You put the doer first: ${result.doer}. Your verb: ${result.verb}. ${sentence.successNote}${result.strongerVerb ? ` One verb does the same job: ${result.strongerVerb}.` : ''}${result.meaningNote ? ` ${result.meaningNote}` : ''}`);
       focusLater(nextRef);
     } else {
       setRewriteFeedback({ ...result, tries });
@@ -773,24 +787,40 @@ export default function App() {
   /* =========================== SUMMARY =========================== */
 
   if (phase === 'finish') {
-    const { found, tagsFor, checklist } = findPatterns(results, SENTENCES);
+    const { found, tagsFor, hadHits, checklist } = findPatterns(results, SENTENCES);
     const cardBg = hc ? 'bg-zinc-900 border border-zinc-500' : 'bg-stone-50 border border-stone-200';
     const copyChecklist = async () => {
+      const text = checklistText(checklist);
+      let ok = false;
       try {
-        await navigator.clipboard.writeText(checklistText(checklist));
-        setCopied(true);
-        setAnnounce('Checklist copied.');
-        setTimeout(() => setCopied(false), 2500);
+        await navigator.clipboard.writeText(text);
+        ok = true;
       } catch {
-        setAnnounce('Copy did not work here. Select the list and copy it by hand.');
+        /* Embedded frames often block the clipboard API. The older command still works there. */
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.setAttribute('readonly', '');
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+        } catch {
+          ok = false;
+        }
       }
+      setCopied(ok ? 'yes' : 'blocked');
+      setAnnounce(ok ? 'Checklist copied.' : 'Copy is blocked here. Select the list and copy it by hand.');
+      setTimeout(() => setCopied(false), ok ? 2500 : 10000);
     };
     return (
       <div className={rootClass}>
         <div className="max-w-2xl mx-auto">
           {chrome}
           <main id="avp-main" ref={mainRef} tabIndex={-1} className={`${t.ring} ${t.card} rounded-3xl p-7 sm:p-10`}>
-            <h1 className="text-3xl sm:text-4xl font-bold mb-6 tracking-tight">You activated all {total} sentences.</h1>
+            <h1 className="text-3xl sm:text-4xl font-bold mb-6 tracking-tight">{results.some((r) => r && r.usedModel) ? `You finished all ${total} sentences.` : `You activated all ${total} sentences.`}</h1>
 
             {/* ---- patterns ---- */}
             <h2 className="text-xl font-semibold mb-3">Your patterns</h2>
@@ -833,7 +863,9 @@ export default function App() {
                   <li key={s.id} className={`rounded-2xl p-4 sm:p-5 ${cardBg}`}>
                     <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                       <span className={`text-xs px-2.5 py-1 rounded-full ${t.badge}`}>{s.docType}</span>
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${t.badgeGood}`}>{tags.length ? tags.join(' · ') : 'Clean'}</span>
+                      {tags.length > 0
+                        ? <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${t.badge}`}>{tags.join(' · ')}</span>
+                        : !hadHits[s.id] && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${t.badgeGood}`}>Clean</span>}
                     </div>
                     <p className={`text-sm mb-2 ${t.muted}`}>
                       {toks.map((tok, k) => (
@@ -868,8 +900,9 @@ export default function App() {
             <div className={`rounded-2xl p-5 mb-8 ${t.panelHelp}`}>
               <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
                 <h2 className="font-semibold">Your editing checklist</h2>
-                <button onClick={copyChecklist} className={btnQuiet} aria-live="polite">{copied ? 'Copied' : 'Copy'}</button>
+                <button onClick={copyChecklist} className={btnQuiet}>{copied === 'yes' ? 'Copied' : 'Copy'}</button>
               </div>
+              {copied === 'blocked' && <p className="text-sm mb-3">Copy is blocked here. Select the list and copy it by hand.</p>}
               <ol className="list-decimal list-inside space-y-2">
                 {checklist.map((c, i) => (
                   <li key={i} className="leading-relaxed">
@@ -1027,16 +1060,29 @@ export default function App() {
 
               {!solved && helpLevel > 0 && (
                 <div className="mb-4" ref={helpRef}>
-                  <Panel t={t} kind="help" title={helpLevel === 1 ? 'Hint' : helpLevel === 2 ? 'Sentence starter' : 'Model answer'}>
-                    {helpLevel === 1 && sentence.help.question}
-                    {helpLevel === 2 && <>Begin with <strong>{sentence.help.starter}</strong> and give them the action: <strong>{sentence.actionLabel}</strong>.</>}
-                    {helpLevel === 3 && (
-                      <>
-                        <p className="text-lg font-medium mb-2">&ldquo;{sentence.sampleActive}&rdquo;</p>
-                        <p className={`text-sm mb-3`}>The doer comes first and the verb does the work. Write your own version, or use this one and keep going.</p>
-                        <button onClick={useModel} className={btnQuiet}>Use this version</button>
-                      </>
-                    )}
+                  <Panel t={t} kind="help">
+                    <dl className="space-y-3">
+                      <div>
+                        <dt className="font-semibold">Hint</dt>
+                        <dd>{sentence.help.question}</dd>
+                      </div>
+                      {helpLevel >= 2 && (
+                        <div>
+                          <dt className="font-semibold">Sentence starter</dt>
+                          <dd>Begin with <strong>{sentence.help.starter}</strong> and give them the action: <strong>{sentence.actionLabel}</strong>.</dd>
+                        </div>
+                      )}
+                      {helpLevel >= 3 && (
+                        <div>
+                          <dt className="font-semibold">Model answer</dt>
+                          <dd>
+                            <p className="text-lg font-medium mb-2">&ldquo;{sentence.sampleActive}&rdquo;</p>
+                            <p className="text-sm mb-3">The doer comes first and the verb does the work. Write your own version, or use this one and keep going.</p>
+                            <button onClick={useModel} className={btnQuiet}>Use this version</button>
+                          </dd>
+                        </div>
+                      )}
+                    </dl>
                   </Panel>
                 </div>
               )}
@@ -1077,7 +1123,7 @@ export default function App() {
               </div>
 
               {rewriteFeedback && rewriteFeedback.correct && (
-                <div className="rounded-2xl overflow-hidden" role="status" aria-live="polite" aria-atomic="true">
+                <div className="rounded-2xl overflow-hidden">
                   <div className={`${t.successHead} px-5 py-4 flex items-center gap-3`}>
                     <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${hc ? 'bg-black text-yellow-300' : 'bg-white text-emerald-700'}`}>
                       <CheckIcon />

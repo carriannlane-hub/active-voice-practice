@@ -16,9 +16,10 @@ import { SYSTEM_PROMPT, OUTPUT_SCHEMA, userMessage, MODEL, EFFORT } from '../lib
 const MAX_TEXT = 300;
 const MODEL_TIMEOUT_MS = 8000;
 
-/* Light rate limit per visitor: 30 checks a minute is far more than a learner needs. */
+/* Rate limit per network address. A class on one agency network can share an address,
+   so the limit leaves room for a whole room checking at once. */
 const WINDOW_MS = 60_000;
-const LIMIT = 30;
+const LIMIT = 300;
 const hits = new Map();
 const limited = (ip) => {
   const now = Date.now();

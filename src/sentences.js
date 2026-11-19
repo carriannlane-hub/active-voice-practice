@@ -10,8 +10,12 @@
     with punctuation ignored. Each must appear exactly once in the sentence.
   - `doerTerms` lists ways a learner might name the doer. Pronouns such as
     "we" and "they" are accepted automatically.
+  - `signalOptional` lists words that also count in step 1 without being
+    required, such as a second passive verb that shares the helper.
   - `decoys` maps tempting wrong taps in step 2 to a specific note. Any other
     wrong tap gets a general note built from `doer`.
+  - Step 2 lets the learner hold as many words as `action` lists. With one
+    action word, a new tap moves the selection.
   - `meaningCheck` is shown under a correct rewrite when the grader thinks the
     action drifted from the original. It is a prompt to compare, never a miss.
   - `activeVerbs` lists verbs that count as activating the sentence.
@@ -97,10 +101,11 @@ export const SENTENCES = [
     docType: 'Report',
     original: 'The risks were assessed by the project team and documented in the report.',
     signal: ['were', 'assessed', 'by'],
+    signalOptional: ['documented'],
     signalLabel: 'were assessed by',
-    passiveNote: 'Two actions sit in passive form, so the team doing the work disappears from both.',
+    passiveNote: '"Documented" shares the helper "were," so two actions sit in passive form and the team doing the work disappears from both.',
     action: ['assessed', 'documented'],
-    actionPrompt: 'What did the project team do? Tap the two words that name it.',
+    actionPrompt: 'Here both actions are already verbs, and one of them sits inside the passive signal. What did the project team do? Tap the two words that name it.',
     actionLabel: 'assessed, documented',
     decoys: {
       were: '"Were" is the helper verb in the passive signal. It carries no action of its own. What did the project team do?',

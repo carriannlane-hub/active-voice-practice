@@ -65,27 +65,44 @@ const PRONOUN_DOERS = ['we', 'i', 'they', 'you', 'he', 'she', 'staff', 'our team
  * @param {number[]} targets   token indices that are correct
  * @param {object[]} tokens    tokens of the sentence (for naming words in notes)
  * @param {'signal'|'action'} kind
- * @param {object} [ctx]       { doer, signalIdx, decoys } for action-step notes
+ * @param {object} [ctx]       { doer, signalIdx, actionIdx, decoys, optionalIdx, nounForm }
+ *   optionalIdx: words that are also right but never required (a second passive verb).
+ *   nounForm: true when the action sits inside a noun in this sentence.
+ *
+ * Returns { kind: 'correct', extraNote? } | { kind: 'partial'|'wrong', text }.
+ * When every target is tapped along with extra words, the step is complete and
+ * `extraNote` explains the extras, so the learner never has to check twice.
  */
 export const gradeSelection = (selected, targets, tokens, kind, ctx = {}) => {
-  const sel = new Set(selected);
+  const optional = new Set(ctx.optionalIdx || []);
+  const picked = selected.filter((i) => !optional.has(i));
+  const sel = new Set(picked);
   const tgt = new Set(targets);
-  const hits = selected.filter((i) => tgt.has(i));
-  const extras = selected.filter((i) => !tgt.has(i));
+  const hits = picked.filter((i) => tgt.has(i));
+  const extras = picked.filter((i) => !tgt.has(i));
   const missing = targets.filter((i) => !sel.has(i));
 
   if (extras.length === 0 && missing.length === 0) return { kind: 'correct' };
 
+  const doer = ctx.doer || 'the doer';
   const name = (i) => `"${tokens[i].text.replace(/[.,!?;:]/g, '')}"`;
+  const list = (idx) => {
+    const names = idx.map(name);
+    return names.length <= 2 ? names.join(' and ') : `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+  };
+  const isAre = (n) => (n > 1 ? 'are' : 'is');
+  const credit = hits.length ? `${list(hits)} ${isAre(hits.length)} right. ` : '';
 
   /* A specific note for a wrong tap in the action step. */
   const explainExtra = (i) => {
     const word = tokens[i].clean;
     if (ctx.decoys && ctx.decoys[word]) return ctx.decoys[word];
     if (ctx.signalIdx && ctx.signalIdx.includes(i)) {
-      return `${name(i)} is part of the passive signal, not the action itself. What did ${ctx.doer || 'the doer'} do?`;
+      return `${name(i)} belongs to the passive signal. Which word names what ${doer} did?`;
     }
-    return `Not ${name(i)}. What did ${ctx.doer || 'the doer'} do? Tap the word that names it, even if it is dressed up as a noun.`;
+    return ctx.nounForm
+      ? `Look past ${name(i)}. Ask what ${doer} did. One noun in this sentence holds that verb.`
+      : `Look past ${name(i)}. Which words name what ${doer} did?`;
   };
 
   /* When several wrong words were tapped, explain the most instructive one:
@@ -97,25 +114,49 @@ export const gradeSelection = (selected, targets, tokens, kind, ctx = {}) => {
   };
   const worst = [...extras].sort((a, b) => rank(a) - rank(b))[0];
 
+  /* An extra tap in the signal step. A word that holds the action gets credit for that. */
+  const cap = (t) => t.charAt(0) + t.charAt(1).toUpperCase() + t.slice(2);
+  const notSignal = () => {
+    const act = extras.filter((i) => (ctx.actionIdx || []).includes(i));
+    const rest = extras.filter((i) => !(ctx.actionIdx || []).includes(i));
+    const parts = [];
+    if (act.length) parts.push(`${cap(list(act))} ${isAre(act.length)} not part of the signal, but ${act.length > 1 ? 'they do hold actions' : 'it does hold an action'}.`);
+    if (rest.length) parts.push(`${cap(list(rest))} ${isAre(rest.length)} not part of the signal.`);
+    return parts.join(' ');
+  };
+  const COUNT = ['', 'one word', 'two words', 'three words', 'four words'];
+  const phrase = targets.map((i) => tokens[i].text.replace(/[.,!?;:]/g, '')).join(' ');
+  const wholeSignal = () => `The signal: ${COUNT[targets.length] || `${targets.length} words`}—${phrase}.`;
+  const moreSignal = () => `The signal has ${missing.length} more word${missing.length > 1 ? 's' : ''}.`;
+
+  /* Every target found, with extra words: complete, and explain the extras. */
+  if (missing.length === 0) {
+    return { kind: 'correct', extraNote: kind === 'action' ? explainExtra(worst) : `${wholeSignal()} ${notSignal()}` };
+  }
+
   if (extras.length > 0 && hits.length > 0) {
     return {
       kind: 'partial',
-      text: kind === 'action'
-        ? `${name(hits[0])} is right. ${explainExtra(worst)}`
-        : `${name(hits[0])} is right. ${extras.map(name).join(' and ')} ${extras.length > 1 ? 'are' : 'is'} not part of it. Try again.`
+      text: kind === 'action' ? `${credit}${explainExtra(worst)}` : `${credit}${notSignal()} ${moreSignal()}`
     };
   }
+
   if (extras.length > 0) {
     return {
       kind: 'wrong',
       text: kind === 'signal'
-        ? `Not that one. Look for a form of "to be" (was, were, is), the verb right after it, and the word "by."`
-        : (extras.length > 1 ? 'Neither of those. ' : '') + explainExtra(worst)
+        ? 'Look for a form of "to be" (was, were, is), the verb right after it, and the word "by."'
+        : explainExtra(worst)
     };
   }
+
+  /* Right so far, with words still to find. */
+  if (kind === 'signal') return { kind: 'partial', text: `Yes, ${credit}${moreSignal()}` };
+  const inSignal = ctx.signalIdx && missing.every((i) => ctx.signalIdx.includes(i));
+  const more = missing.length === 1 ? 'One more word names' : `${missing.length} more words name`;
   return {
     kind: 'partial',
-    text: `Yes, ${hits.map(name).join(' and ')} ${hits.length > 1 ? 'are' : 'is'} part of it. There ${missing.length > 1 ? 'are' : 'is'} ${missing.length} more word${missing.length > 1 ? 's' : ''}.`
+    text: `Yes, ${credit}${more} what ${doer} did.${inSignal ? ' Look inside the passive signal.' : ''}`
   };
 };
 

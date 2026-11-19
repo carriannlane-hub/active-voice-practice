@@ -420,5 +420,240 @@
       "pass": true,
       "stronger": "reviewed"
     }
+  },
+  {
+    "id": "l01",
+    "sentence": "letter",
+    "text": "We received your request on May 2.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    }
+  },
+  {
+    "id": "l02",
+    "sentence": "letter",
+    "text": "Our office received your request on May 2.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    }
+  },
+  {
+    "id": "l03",
+    "sentence": "letter",
+    "text": "Your request was received by our office on May 2.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "passive"
+      ]
+    }
+  },
+  {
+    "id": "l04",
+    "sentence": "letter",
+    "text": "On May 2, we got your request.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    }
+  },
+  {
+    "id": "l05",
+    "sentence": "letter",
+    "text": "Received your request on May 2.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "no_doer",
+        "fragment"
+      ]
+    }
+  },
+  {
+    "id": "l06",
+    "sentence": "letter",
+    "text": "I received your request on May 2.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    }
+  },
+  {
+    "id": "s01",
+    "sentence": "schedule",
+    "text": "The planning team updated the schedule and posted it on the shared drive.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    }
+  },
+  {
+    "id": "s02",
+    "sentence": "schedule",
+    "text": "The planning team updated and posted the schedule on the shared drive.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    }
+  },
+  {
+    "id": "s03",
+    "sentence": "schedule",
+    "text": "The planning team updated the schedule, and it was posted on the shared drive.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "passive"
+      ]
+    },
+    "note": "second clause still passive"
+  },
+  {
+    "id": "s04",
+    "sentence": "schedule",
+    "text": "The planners revised the schedule and uploaded it to the shared drive.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    }
+  },
+  {
+    "id": "s05",
+    "sentence": "schedule",
+    "text": "The schedule was updated and posted by the planning team.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "passive"
+      ]
+    }
+  },
+  {
+    "id": "s06",
+    "sentence": "schedule",
+    "text": "Planning team updated the schedule and put it on the shared drive.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    }
+  },
+  {
+    "id": "g01",
+    "sentence": "change",
+    "text": "The supervisor changed the meeting time.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    }
+  },
+  {
+    "id": "g02",
+    "sentence": "change",
+    "text": "The supervisor made a change to the meeting time.",
+    "expect": {
+      "pass": true,
+      "stronger": "changed"
+    }
+  },
+  {
+    "id": "g03",
+    "sentence": "change",
+    "text": "The meeting time was changed by the supervisor.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "passive"
+      ]
+    }
+  },
+  {
+    "id": "g04",
+    "sentence": "change",
+    "text": "Our supervisor moved the meeting time.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    }
+  },
+  {
+    "id": "g05",
+    "sentence": "change",
+    "text": "The supervisor rescheduled the meeting.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    }
+  },
+  {
+    "id": "g06",
+    "sentence": "change",
+    "text": "Changed the meeting time.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "no_doer",
+        "fragment"
+      ]
+    }
+  },
+  {
+    "id": "d01",
+    "sentence": "deadline",
+    "text": "The project lead moved the deadline to Friday.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    }
+  },
+  {
+    "id": "d02",
+    "sentence": "deadline",
+    "text": "The project lead changed the deadline to Friday.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    }
+  },
+  {
+    "id": "d03",
+    "sentence": "deadline",
+    "text": "The deadline was moved to Friday by the project lead.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "passive"
+      ]
+    }
+  },
+  {
+    "id": "d04",
+    "sentence": "deadline",
+    "text": "Our project lead pushed the deadline to Friday.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    }
+  },
+  {
+    "id": "d05",
+    "sentence": "deadline",
+    "text": "The deadline got moved to Friday.",
+    "expect": {
+      "pass": false,
+      "issue": [
+        "passive"
+      ]
+    }
+  },
+  {
+    "id": "d06",
+    "sentence": "deadline",
+    "text": "We moved the deadline to Friday.",
+    "expect": {
+      "pass": true,
+      "stronger": null
+    }
   }
 ]

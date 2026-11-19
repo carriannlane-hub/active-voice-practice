@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { SENTENCES, TRANSFER, tokenize, resolveTargets } from './sentences';
+import { SETS, TRANSFER, tokenize, resolveTargets } from './sentences';
 import { gradeSelection, normalize } from './grader';
 import { gradeLocally, FIRM_REASONS } from '../lib/hybrid.js';
 import { findPatterns, checklistText } from '../lib/patterns.js';
@@ -16,7 +16,7 @@ import { findPatterns, checklistText } from '../lib/patterns.js';
   Sentences and grading rules live in sentences.js and grader.js.
 */
 
-const STORAGE_KEY = 'avp-progress-v3';
+const STORAGE_KEY = 'avp-progress-v4';
 const PREFS_KEY = 'avp-prefs-v2';
 
 const STAGES = [
@@ -265,6 +265,7 @@ export default function App() {
   /* journey state */
   const savedProgress = useMemo(() => load(STORAGE_KEY), []);
   const [phase, setPhase] = useState('intro'); // intro | practice | transfer | finish
+  const [setIdx, setSetIdx] = useState(0); // which sentence set is in play
   const [current, setCurrent] = useState(0);
   const [results, setResults] = useState([]);
   const [transfer, setTransfer] = useState(null); // { text } | { skipped: true }
@@ -299,8 +300,9 @@ export default function App() {
   const rewriteWorkRef = useRef(null);
   const helpRef = useRef(null);
 
-  const sentence = SENTENCES[current];
-  const total = SENTENCES.length;
+  const sentences = SETS[setIdx] || SETS[0];
+  const sentence = sentences[current];
+  const total = sentences.length;
   const tokens = useMemo(() => tokenize(sentence.original), [sentence]);
   const signalIdx = useMemo(() => resolveTargets(tokens, sentence.signal), [tokens, sentence]);
   const actionIdx = useMemo(() => resolveTargets(tokens, sentence.action), [tokens, sentence]);
@@ -338,14 +340,14 @@ export default function App() {
       const step = phase === 'practice'
         ? { stage, answer, attempts, actionTaps, helpLevel, usedModel, stageRevealed, rewriteTries }
         : null;
-      save(STORAGE_KEY, { phase, current, results, transfer, step });
+      save(STORAGE_KEY, { phase, set: setIdx, current, results, transfer, step });
     }
-  }, [phase, current, results, transfer, stage, answer, attempts, actionTaps, helpLevel, usedModel, stageRevealed, rewriteTries]);
+  }, [phase, setIdx, current, results, transfer, stage, answer, attempts, actionTaps, helpLevel, usedModel, stageRevealed, rewriteTries]);
 
   /* announcements */
   useEffect(() => {
     if (phase !== 'practice') return;
-    if (stage === 'spot') setAnnounce(`Sentence ${current + 1} of ${total}. Step 1, spot it: tap the words that signal passive voice.`);
+    if (stage === 'spot') setAnnounce(`Sentence ${current + 1} of ${total}.${sentence.context ? ` Context: ${sentence.context}` : ''} Step 1, spot it: tap the words that signal passive voice.`);
     if (stage === 'action') setAnnounce(`Step 2, find the action. ${sentence.actionPrompt}`);
     if (stage === 'activate') {
       setAnnounce('Step 3, activate it: rewrite the sentence in active voice.');
@@ -357,6 +359,7 @@ export default function App() {
 
   const begin = (resume) => {
     if (resume && hasSaved) {
+      setSetIdx(SETS[savedProgress.set] ? savedProgress.set : 0);
       setCurrent(Math.min(savedProgress.current, total - 1));
       setResults(savedProgress.results);
       setTransfer(null);
@@ -375,6 +378,7 @@ export default function App() {
       setPhase(savedProgress.phase === 'transfer' ? 'transfer' : 'practice');
     } else {
       clear(STORAGE_KEY);
+      setSetIdx(0);
       setCurrent(0);
       setResults([]);
       setTransfer(null);
@@ -580,10 +584,11 @@ export default function App() {
     setResults([]);
     setTransfer(null);
     setTransferText('');
+    setSetIdx((i) => (i + 1) % SETS.length);
     setCurrent(0);
     resetSentence();
     setPhase('practice');
-    setAnnounce('Starting over from sentence 1.');
+    setAnnounce('A new set of sentences. Sentence 1.');
     focusLater(mainRef);
   };
 
@@ -787,7 +792,7 @@ export default function App() {
   /* =========================== SUMMARY =========================== */
 
   if (phase === 'finish') {
-    const { found, tagsFor, hadHits, checklist } = findPatterns(results, SENTENCES);
+    const { found, tagsFor, hadHits, checklist } = findPatterns(results, sentences);
     const cardBg = hc ? 'bg-zinc-900 border border-zinc-500' : 'bg-stone-50 border border-stone-200';
     const copyChecklist = async () => {
       const text = checklistText(checklist);
@@ -853,7 +858,7 @@ export default function App() {
             {/* ---- rewrites ---- */}
             <h2 className="text-xl font-semibold mb-3">Your rewrites</h2>
             <ol className="space-y-4 mb-8">
-              {SENTENCES.map((s, i) => {
+              {sentences.map((s, i) => {
                 const r = results[i];
                 if (!r) return null;
                 const toks = tokenize(s.original);
@@ -913,7 +918,7 @@ export default function App() {
               </ol>
             </div>
 
-            <button onClick={restart} className={btnPrimary}>Practice again</button>
+            <button onClick={restart} className={btnPrimary}>Practice with new sentences</button>
           </main>
           {footer}
         </div>
@@ -949,7 +954,7 @@ export default function App() {
     <div className="flex items-center justify-between gap-4 mb-5">
       <p className={`text-sm font-medium ${t.soft}`}>Sentence {current + 1} of {total}</p>
       <div className="flex gap-1.5" role="progressbar" aria-valuenow={current + (solved ? 1 : 0)} aria-valuemin={0} aria-valuemax={total} aria-label="Sentences completed">
-        {SENTENCES.map((s, i) => (
+        {sentences.map((s, i) => (
           <span key={s.id} className={`h-2 w-8 rounded-full ${i < current || (i === current && solved) ? t.progressFill : t.progressTrack}`} />
         ))}
       </div>
@@ -984,6 +989,9 @@ export default function App() {
               disabled={stageDone}
               label={stage === 'activate' ? 'Original sentence with the passive signal and the action marked' : 'Original sentence. Select words.'}
             />
+            {sentence.context && (
+              <p className={`mt-3 ${t.soft}`}><span className="font-semibold">Context:</span> {sentence.context}</p>
+            )}
             {stage === 'activate' && (
               <p className={`mt-3 text-sm ${t.soft}`}>
                 <span className={`inline-block px-2 py-0.5 rounded-md mr-2 ${t.wordSignal}`}>Passive signal: {sentence.signalLabel}</span>
@@ -1000,7 +1008,7 @@ export default function App() {
               </h2>
               <p className={`${t.soft} mb-4 leading-relaxed`}>
                 {stage === 'spot'
-                  ? 'Tap the words that signal passive voice: a form of "to be," the verb after it, and "by."'
+                  ? (sentence.spotPrompt || 'Tap the words that signal passive voice: a form of "to be," the verb after it, and "by."')
                   : sentence.actionPrompt}
               </p>
 

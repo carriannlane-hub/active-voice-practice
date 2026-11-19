@@ -42,7 +42,7 @@ Then the **summary**: up to three named patterns from the learner's own misses, 
 "When you edit" cue; the four before-and-after rewrites tagged by pattern; a copyable editing checklist ordered
 by their patterns.
 
-Sentences (ids): `brief`, `explanation`, `report`, `compliance`, plus `TRANSFER` (memo).
+Two sets in `SETS`, one new idea per sentence: plain verbs, action in a noun, a noun spelled like its verb, a passive with the doer left out. Set one: `report`, `brief`, `compliance`, `letter`. Set two: `schedule`, `explanation`, `change`, `deadline`. "Practice with new sentences" moves to the next set. `TRANSFER` is the memo sentence.
 
 ## How rewrites are graded
 
@@ -139,7 +139,7 @@ npx vite build
 
 - **The browser pane is shared.** Carriann sometimes drives it while you test. Open a background tab on
   `http://localhost:5173` for your own run; it has separate storage from `127.0.0.1:5173`.
-- **Progress storage key is `avp-progress-v3`.** To reach the last screens fast, seed it with four results and
+- **Progress storage key is `avp-progress-v4`.** To reach the last screens fast, seed it with four results and
   `phase: "transfer"`, reload, and press Resume.
 - **`eval/results.json` and `eval/report*.txt` are gitignored** run output.
 - **`eval/cases.json` is the authority** on verdicts. "Made a recommendation" passes.

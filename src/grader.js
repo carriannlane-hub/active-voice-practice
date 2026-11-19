@@ -145,7 +145,9 @@ export const gradeSelection = (selected, targets, tokens, kind, ctx = {}) => {
     return {
       kind: 'wrong',
       text: kind === 'signal'
-        ? 'Look for a form of "to be" (was, were, is), the verb right after it, and the word "by."'
+        ? (targets.some((i) => tokens[i].clean === 'by')
+          ? 'Look for a form of "to be" (was, were, is), the verb right after it, and the word "by."'
+          : 'Look for a form of "to be" (was, were, is) and the verb right after it.')
         : explainExtra(worst)
     };
   }

@@ -9,3 +9,4 @@ eval/report*.txt
 
 .vercel
 .env*
+key.txt

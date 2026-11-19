@@ -295,14 +295,25 @@ export default function App() {
   const nextRef = useRef(null);
   const feedbackRef = useRef(null);
   const taskRef = useRef(null);
+  const stageWorkRef = useRef(null);
+  const rewriteWorkRef = useRef(null);
+  const helpRef = useRef(null);
 
   const sentence = SENTENCES[current];
   const total = SENTENCES.length;
   const tokens = useMemo(() => tokenize(sentence.original), [sentence]);
   const signalIdx = useMemo(() => resolveTargets(tokens, sentence.signal), [tokens, sentence]);
   const actionIdx = useMemo(() => resolveTargets(tokens, sentence.action), [tokens, sentence]);
+  const optionalIdx = useMemo(() => resolveTargets(tokens, sentence.signalOptional || []), [tokens, sentence]);
 
   const focusLater = (ref) => setTimeout(() => ref.current && ref.current.focus(), 60);
+
+  /* Bring a note into view: on a phone or in a short frame it can land below the fold. */
+  const reveal = (ref) => setTimeout(() => {
+    if (!ref.current || !ref.current.scrollIntoView) return;
+    const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    ref.current.scrollIntoView({ block: 'nearest', behavior: calm ? 'auto' : 'smooth' });
+  }, 90);
 
   const resetSentence = useCallback(() => {
     setStage('spot');
@@ -360,9 +371,19 @@ export default function App() {
     focusLater(mainRef);
   };
 
+  /* Step 2 holds as many words as the sentence has action words. With one
+     action word, a new tap moves the selection. The last note stays on screen
+     until the next check, so the learner can read it while choosing. */
+  const actionLimit = actionIdx.length;
   const toggleWord = (i) => {
-    setStageFeedback(null);
-    setSelected((s) => (s.includes(i) ? s.filter((x) => x !== i) : [...s, i].sort((a, b) => a - b)));
+    setSelected((s) => {
+      if (s.includes(i)) return s.filter((x) => x !== i);
+      if (stage === 'action') {
+        if (actionLimit === 1) return [i];
+        if (s.length >= actionLimit) return s;
+      }
+      return [...s, i].sort((a, b) => a - b);
+    });
   };
 
   const checkSelection = () => {
@@ -370,14 +391,19 @@ export default function App() {
     const result = gradeSelection(selected, targets, tokens, stage === 'spot' ? 'signal' : 'action', {
       doer: sentence.doer,
       signalIdx,
-      decoys: sentence.decoys
+      decoys: sentence.decoys,
+      optionalIdx: stage === 'spot' ? optionalIdx : [],
+      nounForm: Boolean(sentence.hiddenNoun)
     });
+    const keep = (i) => targets.includes(i) || (stage === 'spot' && optionalIdx.includes(i));
     if (result.kind === 'correct') {
+      const extra = result.extraNote ? ` ${result.extraNote}` : '';
+      setSelected(selected.filter(keep));
       setStageDone(true);
-      setStageFeedback({ kind: 'right', text: stage === 'spot' ? 'You found the signal.' : 'You found the action.' });
+      setStageFeedback({ kind: 'right', text: stage === 'spot' ? 'You found the signal.' : 'You found the action.', extraNote: result.extraNote || null });
       setAnnounce(stage === 'spot'
-        ? `Correct. The passive signal is ${sentence.signalLabel}. ${sentence.passiveNote}`
-        : `Correct. The action is ${sentence.actionLabel}. ${sentence.verbNote}`);
+        ? `Correct. The passive signal is ${sentence.signalLabel}.${extra} ${sentence.passiveNote}`
+        : `Correct. The action is ${sentence.actionLabel}.${extra} ${sentence.verbNote}`);
       focusLater(nextRef);
     } else {
       setStageMisses((m) => ({ ...m, [stage]: m[stage] + 1 }));
@@ -388,7 +414,8 @@ export default function App() {
       setStageFeedback({ kind: 'miss', partial: result.kind === 'partial', text: result.text });
       setAnnounce(`${result.kind === 'partial' ? 'Close.' : 'Not there yet.'} ${result.text}`);
       /* Drop the wrong taps so the next try starts clean. Right taps stay marked. */
-      setSelected(selected.filter((i) => targets.includes(i)));
+      setSelected(selected.filter(keep));
+      reveal(stageWorkRef);
     }
   };
 
@@ -453,11 +480,13 @@ export default function App() {
       setAttempts((a) => [...a, { text: answer.trim(), reason: result.reason }]);
       setAnnounce(`Not there yet. ${result.note}`);
       setTimeout(() => {
-        if (answerRef.current) {
-          answerRef.current.focus();
-          answerRef.current.select();
-        }
+        const el = answerRef.current;
+        if (!el) return;
+        el.focus({ preventScroll: true });
+        const end = el.value.length;
+        el.setSelectionRange(end, end);
       }, 60);
+      reveal(rewriteWorkRef);
     }
   };
 
@@ -469,11 +498,12 @@ export default function App() {
       setTimeout(() => {
         const el = answerRef.current;
         if (!el) return;
-        el.focus();
+        el.focus({ preventScroll: true });
         const end = el.value.length;
         el.setSelectionRange(end, end);
       }, 60);
     }
+    reveal(helpRef);
     setAnnounce(level === 1 ? `Hint: ${sentence.help.question}` : level === 2 ? `Sentence starter: ${sentence.help.starter}` : `Model answer: ${sentence.sampleActive}`);
   };
 
@@ -714,7 +744,7 @@ export default function App() {
               </>
             ) : (
               <div className="space-y-4">
-                <div className={`rounded-2xl p-4 sm:p-5 ${t.panelRight}`}>
+                <div className={`rounded-2xl p-4 sm:p-5 ${cardBg}`}>
                   <p className="font-semibold mb-1">Your version</p>
                   <p className="text-lg leading-relaxed">{transfer.text}</p>
                 </div>
@@ -824,9 +854,9 @@ export default function App() {
                 <h2 className="text-xl font-semibold mb-3">On your own</h2>
                 <div className={`rounded-2xl p-4 sm:p-5 mb-8 ${cardBg}`}>
                   <p className={`text-sm mb-2 ${t.muted}`}>{TRANSFER.original}</p>
-                  <p className="text-lg font-medium flex items-start gap-2 mb-2">
-                    <CheckIcon className={`${t.successCheck} shrink-0 mt-1`} />
-                    <span>{transfer.text}</span>
+                  <p className="text-lg font-medium mb-2">
+                    <span className={`block text-sm font-medium ${t.soft}`}>Your version</span>
+                    {transfer.text}
                   </p>
                   <p className={`text-sm ${t.soft}`}><span className="font-medium">Model version:</span> {TRANSFER.model}</p>
                 </div>
@@ -941,22 +971,34 @@ export default function App() {
               </p>
 
               {!stageDone && (
-                <div className="flex flex-wrap gap-3 items-center mb-4">
-                  <button onClick={checkSelection} disabled={selected.length === 0} className={btnPrimary}>Check</button>
-                  {misses > 0 && <button onClick={revealSelection} className={btnQuiet}>Show me</button>}
-                  <span className={`text-sm ${t.muted}`}>{selected.length === 0 ? 'Tap a word to begin.' : `${selected.length} selected`}</span>
+                <div ref={stageWorkRef}>
+                  {stageFeedback && stageFeedback.kind === 'miss' && (
+                    <div className="mb-4">
+                      <Panel t={t} kind="miss" title={stageFeedback.partial ? 'Close.' : 'Not there yet.'}>
+                        {stageFeedback.text}
+                      </Panel>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-3 items-center mb-4">
+                    <button onClick={checkSelection} disabled={selected.length === 0} className={btnPrimary}>Check</button>
+                    {misses > 0 && <button onClick={revealSelection} className={btnQuiet}>Show me</button>}
+                    <span className={`text-sm ${t.muted}`}>
+                      {selected.length === 0
+                        ? (stage === 'action' && actionLimit === 1 ? 'Tap one word.' : stage === 'action' ? `Tap ${actionLimit} words.` : 'Tap a word to begin.')
+                        : stage === 'action' && actionLimit > 1
+                        ? `${selected.length} of ${actionLimit} selected${selected.length >= actionLimit ? '. Tap a selected word to change it.' : ''}`
+                        : stage === 'action'
+                        ? 'Tap another word to change your choice.'
+                        : `${selected.length} selected`}
+                    </span>
+                  </div>
                 </div>
-              )}
-
-              {stageFeedback && stageFeedback.kind === 'miss' && (
-                <Panel t={t} kind="miss" title={stageFeedback.partial ? 'Close.' : 'Not there yet.'} live>
-                  {stageFeedback.text}
-                </Panel>
               )}
 
               {stageDone && (
                 <div className="space-y-4">
                   <Panel t={t} kind={stage === 'spot' ? 'signal' : 'action'} title={stage === 'spot' ? `${stageFeedback.text} Passive signal: "${sentence.signalLabel}"` : `${stageFeedback.text} The real action: "${sentence.actionLabel}"`}>
+                    {stageFeedback.extraNote && <p className="mb-2">{stageFeedback.extraNote}</p>}
                     {stage === 'spot' ? sentence.passiveNote : sentence.verbNote}
                   </Panel>
                   <button ref={nextRef} onClick={nextStage} className={btnPrimary}>
@@ -972,6 +1014,31 @@ export default function App() {
             <section aria-labelledby="avp-task" ref={taskRef} tabIndex={-1} className={t.ring}>
               <h2 id="avp-task" className="text-xl font-semibold mb-1">Activate it</h2>
               <p className={`${t.soft} mb-4 leading-relaxed`}>Rewrite the sentence so the doer comes first and does the action.</p>
+
+              <div ref={rewriteWorkRef}>
+              {rewriteFeedback && !rewriteFeedback.correct && (
+                <div className="mb-4">
+                <Panel t={t} kind="miss" title={FIRM_REASONS.includes(rewriteFeedback.reason) ? 'Not there yet.' : 'Close.'} innerRef={feedbackRef}>
+                  {rewriteFeedback.note}
+                </Panel>
+                </div>
+              )}
+
+              {!solved && helpLevel > 0 && (
+                <div className="mb-4" ref={helpRef}>
+                  <Panel t={t} kind="help" title={helpLevel === 1 ? 'Hint' : helpLevel === 2 ? 'Sentence starter' : 'Model answer'}>
+                    {helpLevel === 1 && sentence.help.question}
+                    {helpLevel === 2 && <>Begin with <strong>{sentence.help.starter}</strong> and give them the action: <strong>{sentence.actionLabel}</strong>.</>}
+                    {helpLevel === 3 && (
+                      <>
+                        <p className="text-lg font-medium mb-2">&ldquo;{sentence.sampleActive}&rdquo;</p>
+                        <p className={`text-sm mb-3`}>The doer comes first and the verb does the work. Write your own version, or use this one and keep going.</p>
+                        <button onClick={useModel} className={btnQuiet}>Use this version</button>
+                      </>
+                    )}
+                  </Panel>
+                </div>
+              )}
 
               <label htmlFor="avp-answer" className="block font-medium mb-2">Your active-voice sentence</label>
               {solved ? (
@@ -1006,30 +1073,7 @@ export default function App() {
                   </div>
                 </>
               )}
-
-              {rewriteFeedback && !rewriteFeedback.correct && (
-                <div className="mb-4">
-                <Panel t={t} kind="miss" title={FIRM_REASONS.includes(rewriteFeedback.reason) ? 'Not there yet.' : 'Close.'} live innerRef={feedbackRef}>
-                  {rewriteFeedback.note}
-                </Panel>
-                </div>
-              )}
-
-              {!solved && helpLevel > 0 && (
-                <div className="mb-4">
-                  <Panel t={t} kind="help" title={helpLevel === 1 ? 'Hint' : helpLevel === 2 ? 'Sentence starter' : 'Model answer'}>
-                    {helpLevel === 1 && sentence.help.question}
-                    {helpLevel === 2 && <>Begin with <strong>{sentence.help.starter}</strong> and give them the action: <strong>{sentence.actionLabel}</strong>.</>}
-                    {helpLevel === 3 && (
-                      <>
-                        <p className="text-lg font-medium mb-2">&ldquo;{sentence.sampleActive}&rdquo;</p>
-                        <p className={`text-sm mb-3`}>The doer comes first and the verb does the work. Write your own version, or use this one and keep going.</p>
-                        <button onClick={useModel} className={btnQuiet}>Use this version</button>
-                      </>
-                    )}
-                  </Panel>
-                </div>
-              )}
+              </div>
 
               {rewriteFeedback && rewriteFeedback.correct && (
                 <div className="rounded-2xl overflow-hidden" role="status" aria-live="polite" aria-atomic="true">
@@ -1074,7 +1118,7 @@ export default function App() {
 
               {solved && (
                 <button ref={nextRef} onClick={continueNext} className={`${btnPrimary} mt-5`}>
-                  {current < total - 1 ? `Next sentence (${current + 2} of ${total})` : 'See your summary'} <span aria-hidden="true">&rarr;</span>
+                  {current < total - 1 ? `Next sentence (${current + 2} of ${total})` : 'Next: one on your own'} <span aria-hidden="true">&rarr;</span>
                 </button>
               )}
             </section>

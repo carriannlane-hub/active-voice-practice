@@ -114,18 +114,21 @@ export const gradeSelection = (selected, targets, tokens, kind, ctx = {}) => {
   };
   const worst = [...extras].sort((a, b) => rank(a) - rank(b))[0];
 
-  const outside = () => `${list(extras)} ${extras.length > 1 ? 'sit' : 'sits'} outside ${kind === 'signal' ? 'the signal' : 'the action'}.`;
+  const leaveOut = () => `Leave out ${list(extras)}.`;
+  const COUNT = ['', 'one word', 'two words', 'three words', 'four words'];
+  const phrase = targets.map((i) => tokens[i].text.replace(/[.,!?;:]/g, '')).join(' ');
+  const wholeSignal = () => `The signal is these ${COUNT[targets.length] || `${targets.length} words`}: "${phrase}".`;
   const moreSignal = () => `The signal has ${missing.length} more word${missing.length > 1 ? 's' : ''}.`;
 
   /* Every target found, with extra words: complete, and explain the extras. */
   if (missing.length === 0) {
-    return { kind: 'correct', extraNote: kind === 'action' ? explainExtra(worst) : outside() };
+    return { kind: 'correct', extraNote: kind === 'action' ? explainExtra(worst) : `${wholeSignal()} ${leaveOut()}` };
   }
 
   if (extras.length > 0 && hits.length > 0) {
     return {
       kind: 'partial',
-      text: kind === 'action' ? `${credit}${explainExtra(worst)}` : `${credit}${outside()} ${moreSignal()}`
+      text: kind === 'action' ? `${credit}${explainExtra(worst)}` : `${credit}${leaveOut()} ${moreSignal()}`
     };
   }
 

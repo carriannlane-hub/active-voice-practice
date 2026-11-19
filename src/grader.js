@@ -65,7 +65,7 @@ const PRONOUN_DOERS = ['we', 'i', 'they', 'you', 'he', 'she', 'staff', 'our team
  * @param {number[]} targets   token indices that are correct
  * @param {object[]} tokens    tokens of the sentence (for naming words in notes)
  * @param {'signal'|'action'} kind
- * @param {object} [ctx]       { doer, signalIdx, decoys, optionalIdx, nounForm }
+ * @param {object} [ctx]       { doer, signalIdx, actionIdx, decoys, optionalIdx, nounForm }
  *   optionalIdx: words that are also right but never required (a second passive verb).
  *   nounForm: true when the action sits inside a noun in this sentence.
  *
@@ -114,21 +114,30 @@ export const gradeSelection = (selected, targets, tokens, kind, ctx = {}) => {
   };
   const worst = [...extras].sort((a, b) => rank(a) - rank(b))[0];
 
-  const leaveOut = () => `Leave out ${list(extras)}.`;
+  /* An extra tap in the signal step. A word that holds the action gets credit for that. */
+  const cap = (t) => t.charAt(0) + t.charAt(1).toUpperCase() + t.slice(2);
+  const notSignal = () => {
+    const act = extras.filter((i) => (ctx.actionIdx || []).includes(i));
+    const rest = extras.filter((i) => !(ctx.actionIdx || []).includes(i));
+    const parts = [];
+    if (act.length) parts.push(`${cap(list(act))} ${isAre(act.length)} not part of the signal, but ${act.length > 1 ? 'they do hold actions' : 'it does hold an action'}.`);
+    if (rest.length) parts.push(`${cap(list(rest))} ${isAre(rest.length)} not part of the signal.`);
+    return parts.join(' ');
+  };
   const COUNT = ['', 'one word', 'two words', 'three words', 'four words'];
   const phrase = targets.map((i) => tokens[i].text.replace(/[.,!?;:]/g, '')).join(' ');
-  const wholeSignal = () => `The signal is these ${COUNT[targets.length] || `${targets.length} words`}: "${phrase}".`;
+  const wholeSignal = () => `The signal: ${COUNT[targets.length] || `${targets.length} words`}—${phrase}.`;
   const moreSignal = () => `The signal has ${missing.length} more word${missing.length > 1 ? 's' : ''}.`;
 
   /* Every target found, with extra words: complete, and explain the extras. */
   if (missing.length === 0) {
-    return { kind: 'correct', extraNote: kind === 'action' ? explainExtra(worst) : `${wholeSignal()} ${leaveOut()}` };
+    return { kind: 'correct', extraNote: kind === 'action' ? explainExtra(worst) : `${wholeSignal()} ${notSignal()}` };
   }
 
   if (extras.length > 0 && hits.length > 0) {
     return {
       kind: 'partial',
-      text: kind === 'action' ? `${credit}${explainExtra(worst)}` : `${credit}${leaveOut()} ${moreSignal()}`
+      text: kind === 'action' ? `${credit}${explainExtra(worst)}` : `${credit}${notSignal()} ${moreSignal()}`
     };
   }
 

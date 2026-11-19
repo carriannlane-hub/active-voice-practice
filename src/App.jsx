@@ -391,6 +391,7 @@ export default function App() {
     const result = gradeSelection(selected, targets, tokens, stage === 'spot' ? 'signal' : 'action', {
       doer: sentence.doer,
       signalIdx,
+      actionIdx,
       decoys: sentence.decoys,
       optionalIdx: stage === 'spot' ? optionalIdx : [],
       nounForm: Boolean(sentence.hiddenNoun)
